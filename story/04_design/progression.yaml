@@ -1,5 +1,13 @@
 # Прогрессия: правила-знания как ключи. IDs/keys на английском, значения — на русском.
 obstacles:
+  - id: g_route_trap
+    type: world_state
+    description: "Ловушка «ждать квантовый ради маршрута»: Мастер прокладывает путь волной Дейкстры"
+    requires: [halving_done]
+    grants: [rule_1]
+    critical_path: true
+    fallback_route: "неверная ставка не блокирует: волну Мастера показывают в любом случае"
+    status: designed
   - id: r_structure
     type: knowledge
     description: "Хитрость бьёт силу: сначала ищи структуру задачи"
@@ -30,20 +38,12 @@ obstacles:
     requires: [pinball_done]
     grants: [rule_3]
     critical_path: true
-    fallback_route: "после 3 неудачных попыток Оракул показывает решение сам"
+    fallback_route: "после ставки проигрывается выбранное число повторов, затем оптимум"
     status: designed
   - id: g_factory_race
     type: world_state
     description: "Гонка Оракула с Фабрикой"
     requires: [rule_3]
-    grants: [hype_drop]
-    critical_path: true
-    fallback_route: null
-    status: designed
-  - id: g_route_trap
-    type: world_state
-    description: "Ловушка «построй маршрут»"
-    requires: [g_factory_race]
     grants: [hype_drop]
     critical_path: true
     fallback_route: null

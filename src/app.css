@@ -9,6 +9,7 @@
   --factory: #2f4fa8;
   --oracle: #136f7b;
   --margo: #a3204a;
+  --nina: #5a3e9b;
   --line: color-mix(in srgb, var(--ink) 22%, transparent);
   color-scheme: light dark;
 }
@@ -23,6 +24,7 @@
     --factory: #8fa8ff;
     --oracle: #5fd0de;
     --margo: #f27a9c;
+    --nina: #b9a2f0;
   }
 }
 
@@ -53,7 +55,6 @@ a { color: inherit; text-underline-offset: 0.2em; }
 .num { font-variant-numeric: tabular-nums; }
 .speech { font-size: 1.25rem; }
 .plate { border-left: 3px solid var(--ink); padding: 0.25rem 0 0.25rem 0.75rem; margin: 1rem 0; }
-.stage { color: var(--muted); font-style: italic; }
 .rule { font-size: 1.25rem; font-weight: 600; border: 2px solid var(--ink); border-radius: 6px; padding: 0.75rem 1rem; }
 .rule .eyebrow { display: block; font-size: 0.875rem; font-weight: 400; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -86,6 +87,7 @@ details ul { padding-left: 1.25rem; }
 .who-factory { --who: var(--factory); }
 .who-oracle { --who: var(--oracle); }
 .who-margo { --who: var(--margo); }
+.who-nina { --who: var(--nina); }
 
 svg text { fill: currentColor; font-family: inherit; }
 

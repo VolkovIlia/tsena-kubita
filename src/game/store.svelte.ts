@@ -25,6 +25,3 @@ export function update(fn: (p: Progress) => Progress): void {
   game.p = fn(game.p);
   save(game.p);
 }
-
-/** Состояние оболочки, которое не сохраняется: подсветка кнопки блокнота в прологе. */
-export const shell = $state({ pulseNotebook: false });

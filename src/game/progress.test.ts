@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enter, finish, initial, isProgress, recordBet } from "./progress";
+import { enter, finish, initial, isProgress, moodAfter, recordBet } from "./progress";
 
 describe("вход по ссылке", () => {
   it("в главу 4 с нуля: правила 1–3 и полная вера Марго", () => {
@@ -30,6 +30,17 @@ describe("конец главы", () => {
     expect(p.notebook).toEqual(["r1", "r2", "r3", "r4"]);
     expect(p.hype).toBe(40);
     expect(p.done).toEqual(["ch4"]);
+  });
+});
+
+describe("вера Марго после главы", () => {
+  it("после гонки падает до 40, после субботы Марго разобралась", () => {
+    expect(moodAfter(initial(), "ch4").hype).toBe(40);
+    expect(moodAfter(initial(), "ch6").informed).toBe(true);
+  });
+  it("после финала не меняется", () => {
+    const p = { ...initial(), hype: 10, informed: true };
+    expect(moodAfter(p, "ch7")).toEqual(p);
   });
 });
 

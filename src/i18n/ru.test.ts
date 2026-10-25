@@ -1,10 +1,10 @@
 // Страж правила «числа — только из модели»: в словаре нет ни цифр, ни слов шкалы.
-// Исключения: блок cite (библиография) и подстроки из ALLOWED (эпоха Оракула, формулы Гровера и среднего перебора).
+// Исключения: блок cite (библиография) и подстроки из ALLOWED (эпоха Оракула, формулы Гровера, среднего перебора и памяти).
 import { describe, expect, it } from "vitest";
 import { ru } from "./ru";
 
 const NUMBERISH = /\d|миллион|миллиард|триллион|квадриллион|тысяч/i;
-const ALLOWED = ["2030-х", "π/4", "N/2"];
+const ALLOWED = ["2030-х", "π/4", "N/2", "2ⁿ"];
 
 function strings(node: unknown, path: string): [string, string][] {
   if (typeof node === "string") return [[path, node]];

@@ -15,3 +15,7 @@
     </ul>
   {/if}
 </details>
+
+<style>
+  li a { display: inline-flex; align-items: center; min-height: 44px; }
+</style>

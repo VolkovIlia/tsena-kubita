@@ -39,10 +39,18 @@
       "verified": true,
       "cycle_s": 7.09e-10,
       "cycle_source": "NVIDIA A100 whitepaper: GPU Boost Clock 1410 MHz; Hoefler et al. 2023, Methods: cycle ≈0,7 нс",
-      "cycle_source_url": "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf"
+      "cycle_source_url": "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf",
+      "lane": {
+        "clock_hz": 1.41e9,
+        "ops_per_cycle": 1,
+        "bits_per_op": 32,
+        "source": "NVIDIA A100 whitepaper, Table 4: 108 SM × 64 INT32-ядра = 6912, GPU Boost 1410 MHz, Peak INT32 19,5 TOPS (IMAD = 2 операции) = 6912 × 1,41 ГГц × 2 → одна 32-битная операция за такт на поток",
+        "source_url": "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf",
+        "verified": true
+      }
     },
     "oracle": {
-      "name_ru": "Оракул (будущий КК, 10 000 логических кубитов)",
+      "name_ru": "Оракул (будущий КК с исправлением ошибок)",
       "ops_per_s": 235000,
       "algorithm": "grover",
       "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 235 kop/s, логический гейт 10 мкс, оптимистичные допущения",
@@ -78,15 +86,72 @@
     "route_nodes": 1000000,
     "tsp_stops": 200,
     "slider_log_n_min": 6,
-    "slider_log_n_max": 24
+    "slider_log_n_max": 24,
+    "book_pages": 1000,
+    "book_pages_big": 1e6,
+    "cartoon_frames": 1000,
+    "cartoon_pixels": 2e6,
+    "pixel_ticks": 1e5,
+    "payments": 1e6,
+    "payment_ticks": 100,
+    "amdahl_workers": 1e6,
+    "amdahl_serial_max": 0.5,
+    "cat_photos": 1e6,
+    "dataset_bytes": 1e11,
+    "epochs": 100,
+    "memory_n": [10, 40, 60, 80],
+    "shor_a": 7,
+    "shor_n": 15,
+    "key_codes": 1e12,
+    "sandbox_log_n_min": 3,
+    "sandbox_log_n_max": 30,
+    "bytes_per_amplitude": 16
   },
   "rsa2048": {
     "digits": 617,
-    "physical_qubits": "< 1 000 000",
-    "runtime": "< 1 недели",
+    "physical_qubits_max": 1e6,
+    "runtime_days_max": 7,
+    "year": 2025,
     "source": "Gidney 2025, How to factor 2048 bit RSA integers with less than a million noisy qubits",
     "source_url": "https://arxiv.org/abs/2505.15917",
     "verified": true
+  },
+  "rsa250": {
+    "digits": 250,
+    "year": 2020,
+    "core_years": 2700,
+    "source": "Boudot, Gaudry, Guillevic, Heninger, Thomé, Zimmermann. Factorization of RSA-250, 28.02.2020: «roughly 2700 core-years, using Intel Xeon Gold 6130 CPUs as a reference (2.1GHz)»",
+    "source_url": "https://caramba.loria.fr/rsa250.txt",
+    "verified": true
+  },
+  "memory_scales": [
+    {
+      "id": "laptop",
+      "capacity_numbers": 1073741824,
+      "source": "Apple, MacBook Air Tech Specs: базовая модель — 16GB unified memory; оперативная память считается в двоичных единицах: 16 GiB = 2³⁴ ≈ 1,72·10¹⁰ байт ÷ 16 байт на комплексное число = 2³⁰",
+      "source_url": "https://www.apple.com/macbook-air/specs/",
+      "verified": true
+    },
+    {
+      "id": "super",
+      "capacity_numbers": 3.958e14,
+      "source": "LLNL, El Capitan (№1 TOP500, ноябрь 2025): Memory Total 5 898 240 GiB ≈ 6,33·10¹⁵ байт ÷ 16",
+      "source_url": "https://hpc.llnl.gov/hardware/compute-platforms/el-capitan",
+      "verified": true
+    },
+    {
+      "id": "world",
+      "capacity_numbers": 4.19e20,
+      "source": "IDC Global StorageSphere, пресс-релиз 24.03.2021: installed base of storage capacity reached 6.7ZB in 2020 (6,7·10²¹ байт ÷ 16)",
+      "source_url": "https://web.archive.org/web/20211231044751/https://www.idc.com/getdoc.jsp?containerId=prUS47560321",
+      "verified": true
+    }
+  ],
+  "poly_speedup": {
+    "log_power": 3,
+    "source": "Оценка: Shor 1997 — число шагов полиномиально от числа цифр, O((log n)² (log log n)(log log log n)); степень 3 — условная, для песочницы",
+    "source_url": "https://arxiv.org/abs/quant-ph/9508027",
+    "verified": false
   },
   "quantum_echoes": {
     "speedup_claim": 13000,

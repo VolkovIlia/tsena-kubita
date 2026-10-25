@@ -22,6 +22,11 @@ export function animate(ms: number, onFrame: (f: number) => void, onDone?: () =>
   return () => cancelAnimationFrame(id);
 }
 
+/** Гонка: симулируемые часы от 0 до tEnd за 6 с, ускоряясь (время растёт как квадрат реального). */
+export function race(tEnd: number, onFrame: (t: number) => void, onDone: () => void): () => void {
+  return animate(6000, (f) => onFrame(tEnd * f * f), onDone);
+}
+
 /** Svelte-действие: новый экран получает фокус и прокрутку наверх. */
 export function screenFocus(node: HTMLElement): void {
   window.scrollTo(0, 0);

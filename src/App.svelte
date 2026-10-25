@@ -1,19 +1,14 @@
 <script lang="ts">
-  import { onMount, type Component } from "svelte";
+  import { onMount } from "svelte";
+  import { decks } from "./chapters/index";
+  import Deck from "./deck/Deck.svelte";
   import { chapterIndex, chapters, type ChapterId, type RuleId } from "./game/chapters";
   import { hashOf, parseHash } from "./game/hash";
-  import { enter, finish } from "./game/progress";
+  import { enter, finish, initial } from "./game/progress";
   import { game, update } from "./game/store.svelte";
   import { ru } from "./i18n/ru";
-  import Prologue from "./chapters/Prologue.svelte";
-  import Chapter3 from "./chapters/ch3/Chapter3.svelte";
-  import Chapter4 from "./chapters/ch4/Chapter4.svelte";
-  import ChapterSoon from "./ui/ChapterSoon.svelte";
+  import Header from "./ui/Header.svelte";
   import KnownCard from "./ui/KnownCard.svelte";
-  import TopBar from "./ui/TopBar.svelte";
-
-  type ChapterProps = { onDone: () => void };
-  const playable: Partial<Record<ChapterId, Component<ChapterProps>>> = { ch0: Prologue, ch3: Chapter3, ch4: Chapter4 };
 
   let current = $state<ChapterId | null>(null);
   let known = $state<RuleId[]>([]);
@@ -35,12 +30,18 @@
     queueMicrotask(() => heading?.focus());
   }
 
+  /** Конец главы: следующая глава, а после финала — новая неделя с чистого листа. */
   function done() {
     if (!current) return;
     const id = current;
     update((p) => finish(p, id));
     const next = chapters[chapterIndex(id) + 1];
-    if (next) location.hash = hashOf(next.id);
+    if (next) {
+      location.hash = hashOf(next.id);
+      return;
+    }
+    update(() => initial());
+    location.hash = hashOf("ch0");
   }
 
   onMount(() => {
@@ -49,11 +50,10 @@
     return () => window.removeEventListener("hashchange", route);
   });
 
-  const Current = $derived(current ? playable[current] : undefined);
 </script>
 
 <div class="page">
-  <TopBar />
+  <Header {current} />
   {#if current}
     <main>
       <p class="eyebrow">{ru.daysFull[chapters[chapterIndex(current)].day]}</p>
@@ -61,10 +61,8 @@
       {#key visit}
         {#if known.length}
           <KnownCard rules={known} onStart={() => (known = [])} />
-        {:else if Current}
-          <Current onDone={done} />
         {:else}
-          <ChapterSoon />
+          <Deck chapter={current} deck={decks[current]} onDone={done} />
         {/if}
       {/key}
     </main>

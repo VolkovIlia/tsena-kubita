@@ -18,6 +18,7 @@ const SCALES: Forms[] = [
 ];
 const DAYS: Forms = { one: "день", few: "дня", many: "дней", other: "дня" };
 const YEARS: Forms = { one: "год", few: "года", many: "лет", other: "года" };
+const TIMES: Forms = { one: "раз", few: "раза", many: "раз", other: "раза" };
 const SUPERSCRIPT = "⁰¹²³⁴⁵⁶⁷⁸⁹";
 
 /** Подставляет значения вместо {key}; отсутствующий ключ — ошибка программиста. */
@@ -93,4 +94,18 @@ export function fmtDuration(s: number): string {
 /** Доля → проценты с шагом 0,5 п. п.: «12,5%», «78%», «0,5%». */
 export function fmtPercent(p: number): string {
   return `${half.format(Math.round(p * 200) / 2)}%`;
+}
+
+const BYTES = ["Б", "КБ", "МБ", "ГБ", "ТБ", "ПБ", "ЭБ", "ЗБ"];
+
+/** Десятичные единицы объёма: «100 ГБ», «16 ГБ». */
+export function fmtBytes(b: number): string {
+  const i = Math.min(BYTES.length - 1, Math.max(0, Math.floor(Math.log10(b) / 3)));
+  return `${fmtNum(b / 10 ** (3 * i))} ${BYTES[i]}`;
+}
+
+/** Кратность с согласованием: «10 раз», «2 раза», «1,6 раза». */
+export function fmtTimes(x: number): string {
+  const v = rounded(x);
+  return `${fmtNum(v)} ${form(v, TIMES)}`;
 }

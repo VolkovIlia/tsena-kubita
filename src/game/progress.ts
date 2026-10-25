@@ -47,18 +47,23 @@ export function enter(p: Progress, id: ChapterId): { progress: Progress; granted
   return { progress, granted };
 }
 
-/** Глава пройдена: правило в блокнот, hype — как на входе в следующую главу. */
+/** Вера Марго после главы id: hype и informed — как на входе в следующую главу. */
+export function moodAfter(p: Progress, id: ChapterId): Progress {
+  const next = chapters[chapterIndex(id) + 1];
+  return next ? { ...p, hype: next.hypeOnEntry, informed: next.informedOnEntry } : p;
+}
+
+/** Глава пройдена: правило в блокнот, вера Марго — как после главы. */
 export function finish(p: Progress, id: ChapterId): Progress {
-  const i = chapterIndex(id);
-  const next = chapters[i + 1];
-  const rule = chapters[i].rule;
-  return {
-    ...p,
-    done: p.done.includes(id) ? p.done : [...p.done, id],
-    notebook: rule ? withRules(p.notebook, [rule]) : p.notebook,
-    hype: next ? next.hypeOnEntry : p.hype,
-    informed: next ? next.informedOnEntry : p.informed,
-  };
+  const rule = chapters[chapterIndex(id)].rule;
+  return moodAfter(
+    {
+      ...p,
+      done: p.done.includes(id) ? p.done : [...p.done, id],
+      notebook: rule ? withRules(p.notebook, [rule]) : p.notebook,
+    },
+    id,
+  );
 }
 
 /** Ставка: повтор той же ставки заменяет прежнюю. */
@@ -67,8 +72,9 @@ export function recordBet(p: Progress, bet: Bet): Progress {
   return { ...p, bets: [...rest, bet] };
 }
 
-export function setHype(p: Progress, hype: number): Progress {
-  return { ...p, hype: Math.max(0, Math.min(100, hype)) };
+/** Записка Марго из финала: выбранные условия. */
+export function setMemo(p: Progress, memo: string[]): Progress {
+  return { ...p, memo };
 }
 
 export function answerPrologue(p: Progress, answer: PrologueAnswer): Progress {

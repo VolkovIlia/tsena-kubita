@@ -12,14 +12,14 @@
 
   const GUTTER = 84;
   const SLOT = 80;
-  const W = GUTTER + 8 * SLOT;
+  const W = $derived(GUTTER + amps.length * SLOT);
   // Амплитуда лежит в [−1, 1]: место и над осью, и под ней.
   const AXIS = 196;
   const SCALE = 130;
 
   const label = $derived(
     probabilities(amps)
-      .map((p, i) => fill(ru.ch3.screen3.door, { i: String(i + 1), p: fmtPercent(p) }))
+      .map((p, i) => fill(ru.ch3.scene.door, { i: String(i + 1), p: fmtPercent(p) }))
       .join(", "),
   );
   const m = $derived(mean(amps));
@@ -50,7 +50,7 @@
   {#if showMean}
     <g class="mean" style:transform="translateY({-m * SCALE}px)">
       <line x1="0" y1={AXIS} x2={W} y2={AXIS} />
-      <text x="2" y={AXIS - 8}>{ru.ch3.screen3.mean}</text>
+      <text x="2" y={AXIS - 8}>{ru.ch3.scene.mean}</text>
     </g>
   {/if}
 </svg>
@@ -73,5 +73,5 @@
   .axis { stroke: var(--ink); stroke-width: 1.5; }
   .mean { transition: transform 400ms ease; }
   .mean line { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 6 5; }
-  .mean text { font-size: 20px; }
+  .mean text { font-size: 22px; }
 </style>

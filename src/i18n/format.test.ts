@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fill, fmtCount, fmtDuration, fmtPercent, fmtSci } from "./format";
+import { fill, fmtBytes, fmtCount, fmtDuration, fmtPercent, fmtSci, fmtTimes } from "./format";
 
 const NBSP = "\u00a0";
 const YEAR = 365 * 86400;
@@ -63,6 +63,27 @@ describe("fmtPercent: шаг 0,5 п. п.", () => {
     [0.0047, "0,5%"],
   ])("%s → %s", (p, text) => {
     expect(fmtPercent(p)).toBe(text);
+  });
+});
+
+describe("fmtBytes: десятичные единицы", () => {
+  it.each([
+    [1e11, "100 ГБ"],
+    [1.6e10, "16 ГБ"],
+    [512, "512 Б"],
+  ])("%s → %s", (b, text) => {
+    expect(fmtBytes(b)).toBe(text);
+  });
+});
+
+describe("fmtTimes: «раз» с согласованием", () => {
+  it.each([
+    [10, "10 раз"],
+    [2, "2 раза"],
+    [21, "21 раз"],
+    [1.571, "1,6 раза"],
+  ])("%s → %s", (x, text) => {
+    expect(fmtTimes(x)).toBe(text);
   });
 });
 

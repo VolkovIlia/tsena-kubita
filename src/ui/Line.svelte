@@ -1,15 +1,15 @@
 <script lang="ts">
   import { ru } from "../i18n/ru";
-  import Avatar from "./Avatar.svelte";
+  import Peep from "./Peep.svelte";
   import type { Speaker } from "./types";
 
   let { who, text, note }: { who: Speaker; text: string; note?: string } = $props();
 </script>
 
 <div class="line who-{who}">
-  <Avatar {who} />
+  <Peep {who} />
   <p>
-    <span class="name">{ru.executors[who]}{#if note}<em class="note">, {note}</em>{/if}</span>
+    <span class="name">{ru.names[who]}{#if note}<em class="note">, {note}</em>{/if}</span>
     <span class="speech">{text}</span>
   </p>
 </div>

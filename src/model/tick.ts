@@ -9,10 +9,14 @@
 import params from "../../data/params.json";
 
 export type ExecutorId = keyof typeof params.executors;
+export type Classical = Exclude<ExecutorId, "oracle">;
+export type ScaleId = "laptop" | "super" | "world";
+export type Speedup = "sqrt" | "quartic" | "poly";
 export const executors = params.executors;
 export const DEFAULT_CHECK = params.defaults.check_ticks;
 export const DAY = 86400;
 export const scenario = params.defaults;
+export const memoryScales = params.memory_scales;
 export const AS_OF_YEAR = Number(params.as_of.slice(0, 4));
 
 /** Сколько проверок нужно исполнителю для поиска среди n вариантов (√N — порядок Гровера; точнее ≈ π/4·√N). */
@@ -130,4 +134,88 @@ export function oracleFavour(): number {
   const groverExact = Math.PI / 4;
   const classicalAverage = 1 / 2;
   return groverExact / classicalAverage;
+}
+
+/** Шагов деления пополам, чтобы найти страницу среди n. */
+export function halvingSteps(n: number): number {
+  return Math.ceil(Math.log2(n));
+}
+
+/** Тиков в секунду у одного работника: одно ядро CPU или один поток GPU. */
+export function laneRate(id: Classical): number {
+  if (id === "factory") {
+    const l = executors.factory.lane;
+    return l.clock_hz * l.ops_per_cycle * l.bits_per_op;
+  }
+  const d = executors[id].derivation;
+  return d.ops_per_cycle * d.bits_per_op * d.clock_hz;
+}
+
+/** Цепочка зависимых шагов: её не поделить, считает один работник, секунды. */
+export function chainSeconds(id: Classical, items: number, ticks: number): number {
+  return (items * ticks) / laneRate(id);
+}
+
+/** Во сколько раз вход Фабрики шире, чем у Оракула. */
+export function ioRatio(): number {
+  return params.io_gbit_per_s.factory.value / params.io_gbit_per_s.oracle.value;
+}
+
+/** Куда помещаются 2ⁿ чисел: первое хранилище, которого хватает (fits), иначе — самое большое (over). */
+export function memoryPlace(n: number): { id: ScaleId; fits: boolean } {
+  const need = stateVectorSize(n);
+  const fit = memoryScales.find((s) => s.capacity_numbers >= need);
+  const scale = fit ?? memoryScales[memoryScales.length - 1];
+  return { id: scale.id as ScaleId, fits: fit !== undefined };
+}
+
+function gcd(a: number, b: number): number {
+  return b ? gcd(b, a % b) : a;
+}
+
+/** Учебный Шор: из периода r числа a по модулю n — множители gcd(a^(r/2) ∓ 1, n). */
+export function shorFactors(a: number, n: number) {
+  const r = period(a, n);
+  if (r % 2 === 1) throw new Error("нечётный период");
+  const half = r / 2;
+  const square = a ** half;
+  return { r, half, square, p: gcd(square - 1, n), q: gcd(square + 1, n) };
+}
+
+/** Остатки a¹ … a^count по модулю n: «ритм» для главы 6. */
+export function powersMod(a: number, n: number, count: number): number[] {
+  const out: number[] = [];
+  let v = 1;
+  for (let i = 0; i < count; i++) {
+    v = (v * a) % n;
+    out.push(v);
+  }
+  return out;
+}
+
+/** Исполнитель с наименьшим временем. */
+export function bestExecutor(times: Partial<Record<ExecutorId, number>>): ExecutorId {
+  const entries = Object.entries(times) as [ExecutorId, number][];
+  return entries.reduce((best, e) => (e[1] < best[1] ? e : best))[0];
+}
+
+/** Шагов Оракулу при разных видах ускорения: √N, N^¼ и полином от числа цифр (log₂N)^k — оценка, params.poly_speedup. */
+export function oracleSteps(kind: Speedup, n: number): number {
+  if (kind === "sqrt") return Math.sqrt(n);
+  if (kind === "quartic") return n ** 0.25;
+  return Math.log2(n) ** params.poly_speedup.log_power;
+}
+
+/** Песочница финала: время на задачу размера n при цене проверки checkTicks. */
+export function sandboxSeconds(id: ExecutorId, n: number, checkTicks: number, kind: Speedup): number {
+  if (id !== "oracle") return solveSeconds(id, n, checkTicks);
+  return (oracleSteps(kind, n) * checkTicks) / executors.oracle.ops_per_s;
+}
+
+/**
+ * Делимая работа с неделимой долей s: неделимую часть считает один работник уровня Мастера,
+ * делимую — весь исполнитель. При s = 0 — время гонки; ускорение не больше amdahl(s, работников).
+ */
+export function amdahlSeconds(id: Classical, items: number, ticks: number, s: number): number {
+  return s * solveSeconds("master", items, ticks) + (1 - s) * solveSeconds(id, items, ticks);
 }
