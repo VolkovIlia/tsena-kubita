@@ -6,12 +6,13 @@
   import { game, update } from "./game/store.svelte";
   import { ru } from "./i18n/ru";
   import Prologue from "./chapters/Prologue.svelte";
+  import Chapter3 from "./chapters/ch3/Chapter3.svelte";
   import ChapterSoon from "./ui/ChapterSoon.svelte";
   import KnownCard from "./ui/KnownCard.svelte";
   import TopBar from "./ui/TopBar.svelte";
 
   type ChapterProps = { onDone: () => void };
-  const playable: Partial<Record<ChapterId, Component<ChapterProps>>> = { ch0: Prologue };
+  const playable: Partial<Record<ChapterId, Component<ChapterProps>>> = { ch0: Prologue, ch3: Chapter3 };
 
   let current = $state<ChapterId | null>(null);
   let known = $state<RuleId[]>([]);
