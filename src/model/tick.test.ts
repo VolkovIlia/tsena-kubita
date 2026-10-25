@@ -89,9 +89,9 @@ describe("гл. 4: цена тика", () => {
     expect(len).toBeGreaterThan(11);
     expect(len).toBeLessThan(12);
   });
-  it("Дейкстре 70 лет, миллион перекрёстков — меньше секунды", () => {
+  it("Дейкстре 70 лет, миллион перекрёстков — около 122 мс", () => {
     expect(dijkstraAge()).toBe(70);
-    expect(dijkstraSeconds(1e6)).toBeLessThan(1);
+    expect(dijkstraSeconds(1e6) * 1000).toBeCloseTo(122, 0);
   });
 });
 
