@@ -13,6 +13,7 @@ import {
   groverSuccess,
   loadSeconds,
   opsPerCycle,
+  oracleFavour,
   oracleShareDone,
   passwordLength,
   period,
@@ -92,6 +93,10 @@ describe("гл. 4: цена тика", () => {
   it("Дейкстре 70 лет, миллион перекрёстков — около 122 мс", () => {
     expect(dijkstraAge()).toBe(70);
     expect(dijkstraSeconds(1e6) * 1000).toBeCloseTo(122, 0);
+  });
+  it("√N для Оракула и N для Мастера подыгрывают Оракулу в π/2 ≈ 1,57 раза", () => {
+    expect(oracleFavour()).toBeCloseTo(Math.PI / 2, 12);
+    expect(oracleFavour()).toBeCloseTo(1.571, 3);
   });
 });
 

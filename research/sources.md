@@ -90,8 +90,8 @@
 | 47 | Krinner et al. Engineering cryogenic setups for 100-qubit scale superconducting circuit systems (2019): ~14 мК | https://arxiv.org/abs/1806.07862 | Гл. 3: температура криостата | ✅ |
 | 48 | Bast et al. Route Planning in Transportation Networks (2015), Table 1: Западная Европа, 18 млн вершин, Dijkstra 2 195 080 мкс на 1 ядре X5680 | https://arxiv.org/abs/1504.05140 | Гл. 4: Мастер прокладывает маршрут за доли секунды | ✅ |
 | 49 | Concorde TSP benchmarks 1999: kroA200, оптимум за 6,59 с (500 МГц) | https://www.math.uwaterloo.ca/tsp/concorde/benchmarks/bench99.html | Гл. 4: коммивояжёр на 200 адресов | ✅ |
-| 50 | Hougardy, Zhong (2018) | https://arxiv.org/abs/1808.02859 | Гл. 4: контрапункт — бывают и трудные экземпляры коммивояжёра | ✅ |
+| 50 | Hougardy, Zhong. Hard to Solve Instances of the Euclidean Traveling Salesman Problem (2018) | https://arxiv.org/abs/1808.02859 | Гл. 4: контрапункт — бывают и трудные экземпляры коммивояжёра | ✅ |
 | 51 | Ambainis et al. Quantum speedups for exponential-time dynamic programming algorithms (2018): O*(1,728ⁿ) с экспоненциальной памятью | https://arxiv.org/abs/1807.05209 | Гл. 4: «Оракулу известен выигрыш меньше корня» | ✅ |
-| 52 | Montanaro (2015), квантовое ускорение перебора с возвратом | https://arxiv.org/abs/1511.04206 | Гл. 4: квантовые методы для TSP — не больше квадратичного выигрыша | ✅ |
+| 52 | Montanaro. Quantum algorithms: an overview (2015) | https://arxiv.org/abs/1511.04206 | Гл. 4, справочно: для задач NP Гровер по сертификатам даёт почти квадратичное ускорение перебора, 2^(m/2) вместо 2^m; отдельно про коммивояжёра обзор не пишет | ✅ (заголовок и раздел «Search and optimisation» сверены 25.10.2026; прежняя строка с выдуманным названием исправлена) |
 | 53 | Интервью Э. Дейкстры (Communications of the ACM 53(8), 2010): алгоритм придуман в 1956 году. DOI 10.1145/1787234.1787249 | https://doi.org/10.1145/1787234.1787249 | Гл. 4: «ему 70 лет» | ✅ |
-| 54 | Gidney. Halving the cost of quantum addition (2018) | https://arxiv.org/abs/1709.06648 | Справочно: цена квантового сложения; для единицы тика не используется | ⚠ |
+| 54 | Gidney. Halving the cost of quantum addition (2017) | https://arxiv.org/abs/1709.06648 | Справочно: цена квантового сложения; для единицы тика не используется | ✅ (заголовок сверен по arXiv) |

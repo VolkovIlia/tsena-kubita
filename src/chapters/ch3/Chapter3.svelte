@@ -2,10 +2,10 @@
   import { onDestroy } from "svelte";
   import { recordBet } from "../../game/progress";
   import { update } from "../../game/store.svelte";
-  import { fill, fmtCount, fmtPercent } from "../../i18n/format";
+  import { fill, fmtCount, fmtNum, fmtPercent } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
   import { mark, measure, probabilities, reflect, uniform, type Amps } from "../../model/statevector";
-  import { groverOptimal, groverSuccess, scenario } from "../../model/tick";
+  import { groverOptimal, groverSuccess, oracleFavour, scenario } from "../../model/tick";
   import Avatar from "../../ui/Avatar.svelte";
   import Bet from "../../ui/Bet.svelte";
   import Curious from "../../ui/Curious.svelte";
@@ -197,7 +197,7 @@
       <Line who="margo" text={t.razbor.margo1} />
       <Curious cites={["grover", "bbbv", "threeBlue"]}>
         <p>{t.razbor.footnote1}</p>
-        <p>{t.razbor.footnote2}</p>
+        <p>{fill(t.razbor.footnote2, { x: fmtNum(oracleFavour()) })}</p>
       </Curious>
       <p class="rule"><span class="eyebrow">{ru.ui.rule}</span> {ru.rules.r3}</p>
     {/if}

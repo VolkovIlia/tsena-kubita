@@ -120,3 +120,14 @@ export function dijkstraSeconds(nodes: number): number {
 export function powerOfTenBelow(x: number): number {
   return 10 ** Math.floor(Math.log10(x));
 }
+
+/**
+ * Во сколько раз упрощение «Оракулу √N, Мастеру N» подыгрывает Оракулу по сравнению с точным счётом:
+ * Гровер на деле требует ≈π/4·√N итераций (√N завышает ему в 4/π раза), а классическому перебору
+ * в среднем хватает N/2 (N завышает вдвое). Итог: 2 / (4/π) = π/2.
+ */
+export function oracleFavour(): number {
+  const groverExact = Math.PI / 4;
+  const classicalAverage = 1 / 2;
+  return groverExact / classicalAverage;
+}
