@@ -2,6 +2,7 @@
  * Модель «тика» — честный счёт времени для всех гонок игры.
  * T = W(N) · M / R, где W(N) — число проверок (N для перебора, √N для Гровера),
  * M — тиков на одну проверку, R — тиков в секунду у исполнителя.
+ * Тик — одна логическая операция над битом (binary op, Hoefler Table 1) у всех исполнителей.
  * Источник модели: Hoefler, Häner, Troyer, CACM 2023 (arXiv:2307.00523).
  * Не вписывайте числа в тексты руками — берите их из этих функций.
  */
@@ -11,6 +12,8 @@ export type ExecutorId = keyof typeof params.executors;
 export const executors = params.executors;
 export const DEFAULT_CHECK = params.defaults.check_ticks;
 export const DAY = 86400;
+export const scenario = params.defaults;
+export const AS_OF_YEAR = Number(params.as_of.slice(0, 4));
 
 /** Сколько проверок нужно исполнителю для поиска среди n вариантов (√N — порядок Гровера; точнее ≈ π/4·√N). */
 export function steps(id: ExecutorId, n: number): number {
@@ -65,4 +68,55 @@ export function period(a: number, n: number): number {
     v = (v * a) % n;
   }
   throw new Error("период не найден");
+}
+
+/** Во сколько раз тики одного исполнителя быстрее, чем у другого. */
+export function rateRatio(fast: ExecutorId, slow: ExecutorId): number {
+  return executors[fast].ops_per_s / executors[slow].ops_per_s;
+}
+
+/** Длительность одного такта, секунды. */
+export function cycleSeconds(id: "factory" | "oracle"): number {
+  return executors[id].cycle_s;
+}
+
+/** «Ширина»: сколько тиков исполнитель делает за один такт. */
+export function opsPerCycle(id: "factory" | "oracle"): number {
+  return executors[id].ops_per_s * cycleSeconds(id);
+}
+
+/** Тиков в секунду, пересчитанные из ядер, операций за такт, бит на операцию и частоты. */
+export function derivedRate(id: "master" | "brigade"): number {
+  const d = executors[id].derivation;
+  return d.cores * d.ops_per_cycle * d.bits_per_op * d.clock_hz;
+}
+
+/** Какую долю своего перебора Оракул прошёл за seconds (не больше 1). */
+export function oracleShareDone(n: number, seconds: number, checkTicks = DEFAULT_CHECK): number {
+  return Math.min(1, seconds / solveSeconds("oracle", n, checkTicks));
+}
+
+/** Длина пароля, у которого n вариантов при данном алфавите. */
+export function passwordLength(n: number, alphabet = scenario.password_alphabet): number {
+  return Math.log(n) / Math.log(alphabet);
+}
+
+/** Физических кубитов на один логический в поверхностном коде дистанции d: 2d². */
+export function physicalPerLogical(d: number): number {
+  return 2 * d * d;
+}
+
+/** Сколько лет алгоритму Дейкстры на дату модели. */
+export function dijkstraAge(): number {
+  return AS_OF_YEAR - params.dijkstra.conceived;
+}
+
+/** Линейная оценка времени Дейкстры на одном ядре по замеру на дорожной сети Европы, секунды. */
+export function dijkstraSeconds(nodes: number): number {
+  return (params.road_network.dijkstra_seconds * nodes) / params.road_network.nodes;
+}
+
+/** Ближайшая степень десяти снизу: для «больше чем в 10 миллиардов раз». */
+export function powerOfTenBelow(x: number): number {
+  return 10 ** Math.floor(Math.log10(x));
 }

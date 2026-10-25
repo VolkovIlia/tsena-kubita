@@ -1,18 +1,39 @@
 // Регрессионные тесты: числа, на которые опираются реплики сценария.
 // Если тест упал после правки data/params.json — обновите и тексты в story/05_draft, и docs/.
 import { describe, expect, it } from "vitest";
-import { amdahl, crossover, DAY, groverOptimal, groverSuccess, loadSeconds, period, solveSeconds, stateVectorSize } from "./tick";
+import {
+  amdahl,
+  crossover,
+  DAY,
+  derivedRate,
+  dijkstraAge,
+  dijkstraSeconds,
+  executors,
+  groverOptimal,
+  groverSuccess,
+  loadSeconds,
+  opsPerCycle,
+  oracleShareDone,
+  passwordLength,
+  period,
+  physicalPerLogical,
+  powerOfTenBelow,
+  rateRatio,
+  scenario,
+  solveSeconds,
+  stateVectorSize,
+} from "./tick";
 
 describe("гл. 4: точки пересечения (график концепта)", () => {
-  it("против одного ядра: N≈1,8·10⁹, ≈18 с", () => {
+  it("против одного ядра: N≈3·10¹³, ≈39 мин", () => {
     const c = crossover("master");
-    expect(c.n / 1e9).toBeCloseTo(1.81, 1);
-    expect(c.seconds).toBeCloseTo(18.1, 0);
+    expect(c.n / 1e13).toBeCloseTo(2.97, 1);
+    expect(c.seconds / 60).toBeCloseTo(38.6, 0);
   });
-  it("против 64 ядер: N≈7,4·10¹², ≈19 мин", () => {
+  it("против 64 ядер: N≈10¹⁷, ≈37 ч", () => {
     const c = crossover("brigade");
-    expect(c.n / 1e12).toBeCloseTo(7.42, 1);
-    expect(c.seconds / 60).toBeCloseTo(19.3, 0);
+    expect(c.n / 1e16).toBeCloseTo(9.84, 1);
+    expect(c.seconds / 3600).toBeCloseTo(37.1, 0);
   });
   it("против GPU: N≈4,5·10²⁰, ≈105 дней", () => {
     const c = crossover("factory");
@@ -21,11 +42,19 @@ describe("гл. 4: точки пересечения (график концеп�
   });
 });
 
-describe("гл. 4: сейф на 10¹⁰ кодов", () => {
-  it("Мастер ≈100 с, Оракул ≈43 с, Фабрика ≈0,2 мс", () => {
-    expect(solveSeconds("master", 1e10)).toBeCloseTo(100, 5);
-    expect(solveSeconds("oracle", 1e10)).toBeCloseTo(42.6, 0);
-    expect(solveSeconds("factory", 1e10) * 1000).toBeCloseTo(0.2, 3);
+describe("гл. 4: сейф на 10¹⁶ кодов", () => {
+  const safe = scenario.safe_codes;
+  it("Мастер ≈9 дней, Оракул ≈12 ч, Фабрика ≈3,3 мин", () => {
+    expect(solveSeconds("master", safe) / DAY).toBeCloseTo(9.04, 1);
+    expect(solveSeconds("oracle", safe) / 3600).toBeCloseTo(11.82, 1);
+    expect(solveSeconds("factory", safe)).toBeCloseTo(200, 5);
+  });
+  it("сюжет: Оракул обгоняет Мастера, Фабрика обгоняет Оракула", () => {
+    expect(solveSeconds("oracle", safe)).toBeLessThan(solveSeconds("master", safe));
+    expect(solveSeconds("factory", safe)).toBeLessThan(solveSeconds("oracle", safe));
+  });
+  it("к финишу Фабрики Оракул прошёл ≈0,5% пути", () => {
+    expect(oracleShareDone(safe, solveSeconds("factory", safe))).toBeCloseTo(0.0047, 3);
   });
   it("Оракул ×100: 15 мин на проверке в 100 тиков, снова 105 дней на проверке в 10⁶ тиков", () => {
     expect(crossover("factory", 100, 100).seconds / 60).toBeCloseTo(15.1, 0);
@@ -33,6 +62,36 @@ describe("гл. 4: сейф на 10¹⁰ кодов", () => {
   });
   it("проверка в 10⁴ тиков отодвигает финиш примерно на 29 лет", () => {
     expect(crossover("factory", 1e4).seconds / (365 * DAY)).toBeCloseTo(28.7, 0);
+  });
+});
+
+describe("гл. 4: цена тика", () => {
+  it("тик Оракула больше чем в 10 миллиардов раз дороже, чем у Фабрики", () => {
+    const r = rateRatio("factory", "oracle");
+    expect(r).toBeGreaterThan(1e10);
+    expect(r).toBeLessThan(1e11);
+    expect(powerOfTenBelow(r)).toBe(1e10);
+  });
+  it("ширина: Фабрика ≈3,5 миллиона операций за такт, Оракул ≈2,35", () => {
+    expect(opsPerCycle("factory") / 1e6).toBeCloseTo(3.545, 2);
+    expect(opsPerCycle("oracle")).toBeCloseTo(2.35, 5);
+  });
+  it("скорости CPU в JSON совпадают с выводом из ядер, ширины и частоты", () => {
+    expect(derivedRate("master")).toBe(executors.master.ops_per_s);
+    expect(derivedRate("brigade")).toBe(executors.brigade.ops_per_s);
+  });
+  it("поверхностный код: 338 и 1 458 физических кубитов на логический", () => {
+    expect(physicalPerLogical(13)).toBe(338);
+    expect(physicalPerLogical(27)).toBe(1458);
+  });
+  it("пересечение с Фабрикой — пароли из 11–12 символов", () => {
+    const len = passwordLength(crossover("factory").n);
+    expect(len).toBeGreaterThan(11);
+    expect(len).toBeLessThan(12);
+  });
+  it("Дейкстре 70 лет, миллион перекрёстков — меньше секунды", () => {
+    expect(dijkstraAge()).toBe(70);
+    expect(dijkstraSeconds(1e6)).toBeLessThan(1);
   });
 });
 

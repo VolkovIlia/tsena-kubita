@@ -4,19 +4,31 @@
   "executors": {
     "master": {
       "name_ru": "Мастер (1 ядро CPU)",
-      "ops_per_s": 1e10,
+      "ops_per_s": 1.28e12,
       "algorithm": "classical",
-      "source": "Порядковая оценка проекта; ТРЕБУЕТ калибровки бенчмарком",
-      "source_url": null,
-      "verified": false
+      "source": "Тик = логическая операция над битом, как у Hoefler et al. 2023 (Table 1, binary). Одно ядро: 4 скалярные 64-битные логические операции за такт (uops.info, AND r64,r64, Zen 4/Zen 5: 0,25 такта), 5 ГГц (AMD EPYC 9575F, max boost). Векторные команды не учтены — подыгрываем Оракулу",
+      "source_url": "https://uops.info/html-instr/AND_21_R64_R64.html",
+      "verified": true,
+      "derivation": {
+        "cores": 1,
+        "ops_per_cycle": 4,
+        "bits_per_op": 64,
+        "clock_hz": 5e9
+      }
     },
     "brigade": {
       "name_ru": "Бригада (64 ядра CPU)",
-      "ops_per_s": 6.4e11,
+      "ops_per_s": 7.3728e13,
       "algorithm": "classical",
-      "source": "64 × оценка одного ядра; ТРЕБУЕТ калибровки",
-      "source_url": null,
-      "verified": false
+      "source": "64 ядра AMD EPYC 9575F на all-core 4,5 ГГц × 4 скалярные 64-битные логические операции за такт (uops.info)",
+      "source_url": "https://www.amd.com/en/products/processors/server/epyc/9005-series/amd-epyc-9575f.html",
+      "verified": true,
+      "derivation": {
+        "cores": 64,
+        "ops_per_cycle": 4,
+        "bits_per_op": 64,
+        "clock_hz": 4.5e9
+      }
     },
     "factory": {
       "name_ru": "Фабрика (GPU уровня A100)",
@@ -24,25 +36,49 @@
       "algorithm": "classical",
       "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 4 992 Top/s (округлено до 5e15)",
       "source_url": "https://arxiv.org/abs/2307.00523",
-      "verified": true
+      "verified": true,
+      "cycle_s": 7.09e-10,
+      "cycle_source": "NVIDIA A100 whitepaper: GPU Boost Clock 1410 MHz; Hoefler et al. 2023, Methods: cycle ≈0,7 нс",
+      "cycle_source_url": "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf"
     },
     "oracle": {
       "name_ru": "Оракул (будущий КК, 10 000 логических кубитов)",
-      "ops_per_s": 2.35e5,
+      "ops_per_s": 235000,
       "algorithm": "grover",
       "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 235 kop/s, логический гейт 10 мкс, оптимистичные допущения",
+      "source_url": "https://arxiv.org/abs/2307.00523",
+      "verified": true,
+      "cycle_s": 1e-5,
+      "cycle_source": "Hoefler et al. 2023, Table 1: логический гейт 10 мкс",
+      "cycle_source_url": "https://arxiv.org/abs/2307.00523"
+    }
+  },
+  "io_gbit_per_s": {
+    "factory": {
+      "value": 10000,
+      "source": "Hoefler et al. 2023, Table 1",
+      "source_url": "https://arxiv.org/abs/2307.00523",
+      "verified": true
+    },
+    "oracle": {
+      "value": 1,
+      "source": "Hoefler et al. 2023, Table 1",
       "source_url": "https://arxiv.org/abs/2307.00523",
       "verified": true
     }
   },
-  "io_gbit_per_s": {
-    "factory": { "value": 10000, "source": "Hoefler et al. 2023, Table 1", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true },
-    "oracle": { "value": 1, "source": "Hoefler et al. 2023, Table 1", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true }
-  },
   "defaults": {
     "check_ticks": 100,
     "check_ticks_realistic": 1000000,
-    "oracle_speedup_slider": 100
+    "oracle_speedup_slider": 100,
+    "safe_codes": 1e16,
+    "password_alphabet": 62,
+    "pinball_doors": 8,
+    "pinball_big_n": 1000000,
+    "route_nodes": 1000000,
+    "tsp_stops": 200,
+    "slider_log_n_min": 6,
+    "slider_log_n_max": 24
   },
   "rsa2048": {
     "digits": 617,
@@ -58,6 +94,34 @@
     "chip_qubits": 105,
     "source": "Google Quantum AI blog, 22.10.2025",
     "source_url": "https://research.google/blog/a-verifiable-quantum-advantage/",
+    "verified": true
+  },
+  "surface_code": {
+    "distances": [13, 27],
+    "source": "Beverland et al. 2022, Table III: 2d² физических кубитов на логический (d=13 → 338, d=27 → 1458)",
+    "source_url": "https://arxiv.org/abs/2211.07629",
+    "verified": true
+  },
+  "dijkstra": {
+    "conceived": 1956,
+    "published": 1959,
+    "source": "Dijkstra, Numer. Math. 1, 269–271 (1959); интервью CACM 53(8), 2010: придуман в 1956",
+    "source_url": "https://doi.org/10.1007/BF01386390",
+    "verified": true
+  },
+  "road_network": {
+    "nodes": 1.8e7,
+    "dijkstra_seconds": 2.195,
+    "source": "Bast et al. 2015, Table 1: Западная Европа, Dijkstra 2 195 080 мкс, 1 ядро Intel X5680",
+    "source_url": "https://arxiv.org/abs/1504.05140",
+    "verified": true
+  },
+  "tsp": {
+    "instance_stops": 200,
+    "concorde_seconds": 6.59,
+    "year": 1999,
+    "source": "Concorde benchmarks 1999: kroA200, 500 МГц Compaq XP1000",
+    "source_url": "https://www.math.uwaterloo.ca/tsp/concorde/benchmarks/bench99.html",
     "verified": true
   }
 }
