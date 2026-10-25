@@ -3,13 +3,23 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "description": "«Цена кубита» — интерактивный научпоп о квантовых и классических вычислениях",
+  "description": "Цена кубита",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
+    "@fontsource-variable/golos-text": "^5.3.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tsconfig/svelte": "^5.0.8",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }
 }
