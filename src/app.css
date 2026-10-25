@@ -1,1 +1,92 @@
-body { margin: 0; }
+/* Бюро «Счёт»: инженерная миллиметровка, одна гарнитура, табличные цифры. */
+:root {
+  --paper: #f2f4ef;
+  --grid: #dde5df;
+  --ink: #1e2a2f;
+  --muted: #56656a;
+  --master: #8a5d14;
+  --brigade: #b24a12;
+  --factory: #2f4fa8;
+  --oracle: #136f7b;
+  --margo: #a3204a;
+  --line: color-mix(in srgb, var(--ink) 22%, transparent);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #141b1e;
+    --grid: #1f2a2b;
+    --ink: #e6ece8;
+    --muted: #9aaaa9;
+    --master: #d9a54a;
+    --brigade: #f0844a;
+    --factory: #8fa8ff;
+    --oracle: #5fd0de;
+    --margo: #f27a9c;
+  }
+}
+
+* { box-sizing: border-box; }
+html { font-size: 100%; }
+body {
+  margin: 0;
+  font-family: "Golos Text Variable", system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-text-size-adjust: 100%;
+}
+.page { max-width: 40rem; margin: 0 auto; padding: 1rem; }
+@media (min-width: 768px) { .page { padding: 2rem; } }
+
+h1 { font-size: 2rem; line-height: 1.2; font-weight: 600; margin: 0.5rem 0 1.5rem; }
+h1:focus, .screen:focus { outline: none; }
+h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.75rem; }
+p { margin: 0 0 1rem; }
+a { color: inherit; text-underline-offset: 0.2em; }
+.eyebrow { color: var(--muted); margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+.speech { font-size: 1.25rem; }
+.plate { border-left: 3px solid var(--ink); padding: 0.25rem 0 0.25rem 0.75rem; margin: 1rem 0; }
+.stage { color: var(--muted); font-style: italic; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.45; cursor: default; }
+button[aria-pressed="true"] { background: var(--ink); color: var(--paper); opacity: 1; }
+button.primary { background: var(--ink); color: var(--paper); }
+button.primary:disabled { background: var(--paper); color: var(--ink); }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.5rem 0; }
+
+details { margin: 1rem 0; border-top: 1px solid var(--line); padding-top: 0.5rem; }
+summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+details ul { padding-left: 1.25rem; }
+
+.counter { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.who-master { --who: var(--master); }
+.who-brigade { --who: var(--brigade); }
+.who-factory { --who: var(--factory); }
+.who-oracle { --who: var(--oracle); }
+.who-margo { --who: var(--margo); }
+
+svg text { fill: currentColor; font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

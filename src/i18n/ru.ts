@@ -11,6 +11,7 @@ export const ru = {
     known: "Что ты уже знаешь",
     notebook: "Блокнот",
     notebookTitle: "Блокнот диспетчера",
+    ruleBlank: "ещё не записано",
     close: "Закрыть",
     hype: "Вера Марго в Оракула",
     informed: "Марго разобралась",

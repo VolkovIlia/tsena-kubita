@@ -38,6 +38,11 @@ export function fmtNum(x: number): string {
   return x >= 10 ? int.format(x) : sig2.format(x);
 }
 
+/** Точное целое с разрядами: для бегущих счётчиков тиков. */
+export function fmtExact(n: number): string {
+  return int.format(Math.floor(n));
+}
+
 function form(value: number, forms: Forms): string {
   return forms[plural.select(value) as keyof Forms] ?? forms.other;
 }
