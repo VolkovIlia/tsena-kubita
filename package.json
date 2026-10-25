@@ -1,0 +1,15 @@
+{
+  "name": "tsena-kubita",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "«Цена кубита» — интерактивный научпоп о квантовых и классических вычислениях",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

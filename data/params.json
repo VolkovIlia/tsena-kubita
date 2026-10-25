@@ -1,0 +1,63 @@
+{
+  "_readme": "Единственный источник чисел для игры. Реплики персонажей и гонки берут числа ТОЛЬКО отсюда (через src/model/tick.ts). Любое изменение — с источником, датой и прогоном тестов.",
+  "as_of": "2026-10-25",
+  "executors": {
+    "master": {
+      "name_ru": "Мастер (1 ядро CPU)",
+      "ops_per_s": 1e10,
+      "algorithm": "classical",
+      "source": "Порядковая оценка проекта; ТРЕБУЕТ калибровки бенчмарком",
+      "source_url": null,
+      "verified": false
+    },
+    "brigade": {
+      "name_ru": "Бригада (64 ядра CPU)",
+      "ops_per_s": 6.4e11,
+      "algorithm": "classical",
+      "source": "64 × оценка одного ядра; ТРЕБУЕТ калибровки",
+      "source_url": null,
+      "verified": false
+    },
+    "factory": {
+      "name_ru": "Фабрика (GPU уровня A100)",
+      "ops_per_s": 5e15,
+      "algorithm": "classical",
+      "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 4 992 Top/s (округлено до 5e15)",
+      "source_url": "https://arxiv.org/abs/2307.00523",
+      "verified": true
+    },
+    "oracle": {
+      "name_ru": "Оракул (будущий КК, 10 000 логических кубитов)",
+      "ops_per_s": 2.35e5,
+      "algorithm": "grover",
+      "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 235 kop/s, логический гейт 10 мкс, оптимистичные допущения",
+      "source_url": "https://arxiv.org/abs/2307.00523",
+      "verified": true
+    }
+  },
+  "io_gbit_per_s": {
+    "factory": { "value": 10000, "source": "Hoefler et al. 2023, Table 1", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true },
+    "oracle": { "value": 1, "source": "Hoefler et al. 2023, Table 1", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true }
+  },
+  "defaults": {
+    "check_ticks": 100,
+    "check_ticks_realistic": 1000000,
+    "oracle_speedup_slider": 100
+  },
+  "rsa2048": {
+    "digits": 617,
+    "physical_qubits": "< 1 000 000",
+    "runtime": "< 1 недели",
+    "source": "Gidney 2025, How to factor 2048 bit RSA integers with less than a million noisy qubits",
+    "source_url": "https://arxiv.org/abs/2505.15917",
+    "verified": true
+  },
+  "quantum_echoes": {
+    "speedup_claim": 13000,
+    "qubits_used": 65,
+    "chip_qubits": 105,
+    "source": "Google Quantum AI blog, 22.10.2025",
+    "source_url": "https://research.google/blog/a-verifiable-quantum-advantage/",
+    "verified": true
+  }
+}

@@ -1,0 +1,90 @@
+# Прогрессия: правила-знания как ключи. IDs/keys на английском, значения — на русском.
+obstacles:
+  - id: r_structure
+    type: knowledge
+    description: "Хитрость бьёт силу: сначала ищи структуру задачи"
+    requires: [chapter_01_done]
+    grants: [rule_1]
+    critical_path: true
+    fallback_route: "выдаётся при разборе даже при неверной ставке"
+    status: designed
+  - id: r_parallel
+    type: knowledge
+    description: "Делить можно не всякую работу"
+    requires: [chapter_02_done]
+    grants: [rule_2]
+    critical_path: true
+    fallback_route: "выдаётся при разборе"
+    status: designed
+  - id: g_oracle_arrives
+    type: world_state
+    description: "Оракул приезжает в бюро"
+    requires: [rule_1, rule_2]
+    grants: [executor_oracle]
+    critical_path: true
+    fallback_route: "вход по ссылке — карточка «что ты уже знаешь»"
+    status: designed
+  - id: r_interference
+    type: knowledge
+    description: "Оракул не читает все ответы — он гасит неверные волнами"
+    requires: [pinball_done]
+    grants: [rule_3]
+    critical_path: true
+    fallback_route: "после 3 неудачных попыток Оракул показывает решение сам"
+    status: designed
+  - id: g_factory_race
+    type: world_state
+    description: "Гонка Оракула с Фабрикой"
+    requires: [rule_3]
+    grants: [hype_drop]
+    critical_path: true
+    fallback_route: null
+    status: designed
+  - id: g_route_trap
+    type: world_state
+    description: "Ловушка «построй маршрут»"
+    requires: [g_factory_race]
+    grants: [hype_drop]
+    critical_path: true
+    fallback_route: null
+    status: designed
+  - id: r_tick_price
+    type: knowledge
+    description: "Шаг Оракула очень дорог: корень из N окупается нескоро"
+    requires: [chapter_04_done]
+    grants: [rule_4]
+    critical_path: true
+    fallback_route: "выдаётся при разборе"
+    status: designed
+  - id: r_bottleneck
+    type: knowledge
+    description: "Данные льются в Оракула через соломинку"
+    requires: [chapter_05_done]
+    grants: [rule_5]
+    critical_path: true
+    fallback_route: "выдаётся при разборе"
+    status: designed
+  - id: g_nina
+    type: relationship
+    description: "Приходит Нина"
+    requires: [rule_4, rule_5]
+    grants: [chapter_06_orders]
+    critical_path: true
+    fallback_route: null
+    status: designed
+  - id: r_exponential
+    type: knowledge
+    description: "Оракул незаменим, где задача сама квантовая или прячет ритм"
+    requires: [chapter_06_done]
+    grants: [rule_6]
+    critical_path: true
+    fallback_route: "выдаётся при разборе"
+    status: designed
+  - id: g_memo
+    type: world_state
+    description: "Служебная записка Марго"
+    requires: [rule_1, rule_2, rule_3, rule_4, rule_5, rule_6]
+    grants: [finale_scene]
+    critical_path: true
+    fallback_route: "правила видны в записке как подсказки; неверную записку можно исправить"
+    status: designed

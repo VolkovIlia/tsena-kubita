@@ -1,0 +1,6 @@
+threads:
+  - id: prologue_answer_callback
+    opened_in: chapter_00
+    resolved_in: chapter_07
+    note: "3 варианта написаны в chapter_07.md, экран 6"
+    status: resolved

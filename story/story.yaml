@@ -1,0 +1,24 @@
+project:
+  title: "Цена кубита (рабочее)"
+  format: "interactive_explainer"
+  status: "scripted"
+
+story:
+  genre: "научно-популярная интерактивная история"
+  subgenre: "explorable explanation в формате The Evolution of Trust"
+  language: "ru"
+  audience: "16+, без специальной подготовки; студенты, журналисты, лица, принимающие решения"
+  estimated_length: "28–32 минуты: пролог, 6 глав, финал"
+  premise_status: "approved"
+
+narrative:
+  tone: "умный приятель: сухой юмор, точность, без восторгов и страшилок"
+  voice: "реплики персонажей + короткие плашки «разбор»"
+  pov: "второе лицо, игрок — диспетчер бюро («ты»)"
+  tense: "настоящее"
+
+workflow:
+  canonical_root: "story"
+  initialized_at: "2026-10-25"
+  next_skill: "chapter-review"
+  numbers_source: "../data/params.json через ../src/model/tick.ts"
