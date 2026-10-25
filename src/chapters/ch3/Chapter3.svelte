@@ -209,6 +209,4 @@
   .cryostat { display: flex; justify-content: center; margin: 1rem 0; }
   .bars p { margin: 0.75rem 0 0.25rem; }
   .bar { height: 14px; background: var(--who); }
-  .rule { font-size: 1.25rem; font-weight: 600; border: 2px solid var(--ink); padding: 0.75rem 1rem; }
-  .rule .eyebrow { display: block; font-size: 0.875rem; font-weight: 400; }
 </style>

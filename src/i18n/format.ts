@@ -86,6 +86,7 @@ export function fmtDuration(s: number): string {
     return `${fmtNum(days)} ${form(days, DAYS)}`;
   }
   const years = rounded(s / (365 * 86400));
+  if (years >= 1e6) return `${fmtCount(years)} лет`;
   return `${fmtNum(years)} ${form(years, YEARS)}`;
 }
 
