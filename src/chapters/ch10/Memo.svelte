@@ -3,30 +3,29 @@
   import { update } from "../../game/store.svelte";
   import { fill } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import Line from "../../ui/Line.svelte";
+  import { chapterNames } from "./cards";
 
-  let { onWrong, onDone }: { onWrong: (wrong: boolean) => void; onDone: () => void } = $props();
+  let { onDone }: { onDone: () => void } = $props();
 
-  type Chip = keyof typeof ru.ch7.memoChips;
-  type Wrong = keyof typeof ru.ch7.memoUi.wrong;
-  const t = ru.ch7;
+  type Chip = keyof typeof ru.ch10.memoChips;
+  type Wrong = keyof typeof ru.ch10.memoUi.hint;
+  const t = ru.ch10;
   const CHIPS = Object.keys(t.memoChips) as Chip[];
   const RIGHT: Chip[] = ["small_in", "small_out", "structure"];
   let chosen = $state<Chip[]>([]);
-  let complaint = $state<Wrong | null>(null);
+  /** Подсказка рассказчика на первую лишнюю фишку: отсылка к главе, где это проверяли. */
+  let hint = $state<Wrong | null>(null);
   let signed = $state(false);
 
   function toggle(c: Chip) {
     chosen = chosen.includes(c) ? chosen.filter((x) => x !== c) : [...chosen, c];
-    complaint = null;
-    onWrong(false);
+    hint = null;
   }
 
   function sign() {
     const extra = CHIPS.find((c) => chosen.includes(c) && !RIGHT.includes(c)) as Wrong | undefined;
     if (extra) {
-      complaint = extra;
-      onWrong(true);
+      hint = extra;
       return;
     }
     signed = true;
@@ -42,7 +41,7 @@
     {/each}
   </div>
   <p class="num" aria-live="polite">{fill(t.memoUi.picked, { k: String(chosen.length), total: String(RIGHT.length) })}</p>
-  {#if complaint}<div role="status"><Line who="margo" text={t.memoUi.wrong[complaint]} /></div>{/if}
+  {#if hint}<p class="hint" role="status">{fill(t.memoUi.hint[hint], chapterNames)}</p>{/if}
   {#if signed}
     <p class="signed" role="status">{t.memoUi.signed}</p>
   {:else}
@@ -51,6 +50,8 @@
 </div>
 
 <style>
-  .memo { margin: 1rem 0; }
+  .memo { margin: 0.75rem 0; }
+  .actions { margin: 0.5rem 0; }
+  .hint { font-size: 1.125rem; border-left: 3px solid var(--ink); padding-left: 0.75rem; }
   .signed { font-weight: 600; }
 </style>

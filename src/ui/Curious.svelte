@@ -17,5 +17,6 @@
 </details>
 
 <style>
+  details :global(p), li { font-size: 0.875rem; line-height: 1.45; }
   li a { display: inline-flex; align-items: center; min-height: 44px; }
 </style>

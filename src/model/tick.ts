@@ -9,7 +9,7 @@
 import params from "../../data/params.json";
 
 export type ExecutorId = keyof typeof params.executors;
-export type Classical = Exclude<ExecutorId, "oracle">;
+export type Classical = Exclude<ExecutorId, "qc">;
 export type ScaleId = "laptop" | "super" | "world";
 export type Speedup = "sqrt" | "quartic" | "poly";
 export const executors = params.executors;
@@ -25,15 +25,15 @@ export function steps(id: ExecutorId, n: number): number {
 }
 
 /** Время решения неструктурированного поиска среди n вариантов, секунды. */
-export function solveSeconds(id: ExecutorId, n: number, checkTicks = DEFAULT_CHECK, oracleSpeedup = 1): number {
-  const rate = executors[id].ops_per_s * (id === "oracle" ? oracleSpeedup : 1);
+export function solveSeconds(id: ExecutorId, n: number, checkTicks = DEFAULT_CHECK, qcSpeedup = 1): number {
+  const rate = executors[id].ops_per_s * (id === "qc" ? qcSpeedup : 1);
   return (steps(id, n) * checkTicks) / rate;
 }
 
-/** Где Оракул (Гровер) догоняет классического исполнителя: N* = (Rc/Rq)², T* = Rc·M/Rq². */
-export function crossover(classical: Exclude<ExecutorId, "oracle">, checkTicks = DEFAULT_CHECK, oracleSpeedup = 1) {
+/** Где квантовый компьютер (Гровер) догоняет классического исполнителя: N* = (Rc/Rq)², T* = Rc·M/Rq². */
+export function crossover(classical: Classical, checkTicks = DEFAULT_CHECK, qcSpeedup = 1) {
   const rc = executors[classical].ops_per_s;
-  const rq = executors.oracle.ops_per_s * oracleSpeedup;
+  const rq = executors.qc.ops_per_s * qcSpeedup;
   return { n: (rc / rq) ** 2, seconds: (rc * checkTicks) / rq ** 2 };
 }
 
@@ -50,7 +50,7 @@ export function groverOptimal(n: number): number {
 }
 
 /** Время загрузки данных через канал ввода-вывода, секунды. */
-export function loadSeconds(who: "factory" | "oracle", bytes: number): number {
+export function loadSeconds(who: "gpu" | "qc", bytes: number): number {
   return (bytes * 8) / (params.io_gbit_per_s[who].value * 1e9);
 }
 
@@ -80,24 +80,24 @@ export function rateRatio(fast: ExecutorId, slow: ExecutorId): number {
 }
 
 /** Длительность одного такта, секунды. */
-export function cycleSeconds(id: "factory" | "oracle"): number {
+export function cycleSeconds(id: "gpu" | "qc"): number {
   return executors[id].cycle_s;
 }
 
 /** «Ширина»: сколько тиков исполнитель делает за один такт. */
-export function opsPerCycle(id: "factory" | "oracle"): number {
+export function opsPerCycle(id: "gpu" | "qc"): number {
   return executors[id].ops_per_s * cycleSeconds(id);
 }
 
 /** Тиков в секунду, пересчитанные из ядер, операций за такт, бит на операцию и частоты. */
-export function derivedRate(id: "master" | "brigade"): number {
+export function derivedRate(id: "core" | "cores"): number {
   const d = executors[id].derivation;
   return d.cores * d.ops_per_cycle * d.bits_per_op * d.clock_hz;
 }
 
-/** Какую долю своего перебора Оракул прошёл за seconds (не больше 1). */
-export function oracleShareDone(n: number, seconds: number, checkTicks = DEFAULT_CHECK): number {
-  return Math.min(1, seconds / solveSeconds("oracle", n, checkTicks));
+/** Какую долю своего перебора квантовый компьютер прошёл за seconds (не больше 1). */
+export function qcShareDone(n: number, seconds: number, checkTicks = DEFAULT_CHECK): number {
+  return Math.min(1, seconds / solveSeconds("qc", n, checkTicks));
 }
 
 /** Длина пароля, у которого n вариантов при данном алфавите. */
@@ -126,11 +126,11 @@ export function powerOfTenBelow(x: number): number {
 }
 
 /**
- * Во сколько раз упрощение «Оракулу √N, Мастеру N» подыгрывает Оракулу по сравнению с точным счётом:
+ * Во сколько раз упрощение «квантовому √N, одному ядру N» подыгрывает квантовому компьютеру по сравнению с точным счётом:
  * Гровер на деле требует ≈π/4·√N итераций (√N завышает ему в 4/π раза), а классическому перебору
  * в среднем хватает N/2 (N завышает вдвое). Итог: 2 / (4/π) = π/2.
  */
-export function oracleFavour(): number {
+export function qcFavour(): number {
   const groverExact = Math.PI / 4;
   const classicalAverage = 1 / 2;
   return groverExact / classicalAverage;
@@ -141,13 +141,17 @@ export function halvingSteps(n: number): number {
   return Math.ceil(Math.log2(n));
 }
 
-/** Тиков в секунду у одного работника: одно ядро CPU или один поток GPU. */
+/**
+ * Тиков в секунду у одного работающего ядра, когда остальные простаивают (цепочка).
+ * Процессор: одно занятое ядро разгоняется до максимальной частоты — у 64 ядер столько же, сколько
+ * у одиночного (паспорт AMD: max boost 5 ГГц, all-core 4,5 ГГц). Видеокарта: одно ядро на своей частоте.
+ */
 export function laneRate(id: Classical): number {
-  if (id === "factory") {
-    const l = executors.factory.lane;
+  if (id === "gpu") {
+    const l = executors.gpu.lane;
     return l.clock_hz * l.ops_per_cycle * l.bits_per_op;
   }
-  const d = executors[id].derivation;
+  const d = executors.core.derivation;
   return d.ops_per_cycle * d.bits_per_op * d.clock_hz;
 }
 
@@ -156,9 +160,9 @@ export function chainSeconds(id: Classical, items: number, ticks: number): numbe
   return (items * ticks) / laneRate(id);
 }
 
-/** Во сколько раз вход Фабрики шире, чем у Оракула. */
+/** Во сколько раз вход видеокарты шире, чем у квантового компьютера. */
 export function ioRatio(): number {
-  return params.io_gbit_per_s.factory.value / params.io_gbit_per_s.oracle.value;
+  return params.io_gbit_per_s.gpu.value / params.io_gbit_per_s.qc.value;
 }
 
 /** Куда помещаются 2ⁿ чисел: первое хранилище, которого хватает (fits), иначе — самое большое (over). */
@@ -199,8 +203,8 @@ export function bestExecutor(times: Partial<Record<ExecutorId, number>>): Execut
   return entries.reduce((best, e) => (e[1] < best[1] ? e : best))[0];
 }
 
-/** Шагов Оракулу при разных видах ускорения: √N, N^¼ и полином от числа цифр (log₂N)^k — оценка, params.poly_speedup. */
-export function oracleSteps(kind: Speedup, n: number): number {
+/** Шагов квантовому компьютеру при разных видах ускорения: √N, N^¼ и полином от числа цифр (log₂N)^k — оценка, params.poly_speedup. */
+export function qcSteps(kind: Speedup, n: number): number {
   if (kind === "sqrt") return Math.sqrt(n);
   if (kind === "quartic") return n ** 0.25;
   return Math.log2(n) ** params.poly_speedup.log_power;
@@ -208,14 +212,81 @@ export function oracleSteps(kind: Speedup, n: number): number {
 
 /** Песочница финала: время на задачу размера n при цене проверки checkTicks. */
 export function sandboxSeconds(id: ExecutorId, n: number, checkTicks: number, kind: Speedup): number {
-  if (id !== "oracle") return solveSeconds(id, n, checkTicks);
-  return (oracleSteps(kind, n) * checkTicks) / executors.oracle.ops_per_s;
+  if (id !== "qc") return solveSeconds(id, n, checkTicks);
+  return (qcSteps(kind, n) * checkTicks) / executors.qc.ops_per_s;
 }
 
 /**
- * Делимая работа с неделимой долей s: неделимую часть считает один работник уровня Мастера,
+ * Делимая работа с неделимой долей s: неделимую часть считает один работник уровня одного ядра,
  * делимую — весь исполнитель. При s = 0 — время гонки; ускорение не больше amdahl(s, работников).
  */
 export function amdahlSeconds(id: Classical, items: number, ticks: number, s: number): number {
-  return s * solveSeconds("master", items, ticks) + (1 - s) * solveSeconds(id, items, ticks);
+  return s * solveSeconds("core", items, ticks) + (1 - s) * solveSeconds(id, items, ticks);
+}
+
+export type Complexity = "log" | "linear" | "square" | "exp";
+
+/** Ступени лестницы сложности: шагов алгоритма на задачу размера n. */
+export function complexitySteps(kind: Complexity, n: number): number {
+  if (kind === "log") return Math.ceil(Math.log2(n));
+  if (kind === "linear") return n;
+  if (kind === "square") return n * n;
+  return 2 ** n;
+}
+
+/** Время ступени на одном ядре при цене шага checkTicks, секунды. */
+export function ladderSeconds(kind: Complexity, n: number, checkTicks = DEFAULT_CHECK): number {
+  return (complexitySteps(kind, n) * checkTicks) / executors.core.ops_per_s;
+}
+
+/** Возраст Вселенной, секунды (юлианский год). */
+export function universeAgeSeconds(): number {
+  return params.universe_age_years.value * 365.25 * DAY;
+}
+
+/** Тиков на сложение двух bits-битных чисел в схеме из полных сумматоров. */
+export function adderTicks(bits: number): number {
+  return bits * params.adder.gates_per_bit;
+}
+
+/** Тиков за один такт одного ядра: операций за такт × бит на операцию. */
+export function ticksPerCycle(id: "core" | "cores"): number {
+  const d = executors[id].derivation;
+  return d.ops_per_cycle * d.bits_per_op;
+}
+
+/** Сколько «рук» работает одновременно: ядра, потоки видеокарты; у квантового — один набор амплитуд. */
+export function hands(id: ExecutorId): number {
+  if (id === "qc") return 1;
+  if (id === "gpu") return executors.gpu.lane.lanes;
+  return executors[id].derivation.cores;
+}
+
+/** Шагов подряд на поиск среди n: классическим — n, поделённое на руки; квантовому — итерации Гровера. */
+export function handSteps(id: ExecutorId, n: number): number {
+  return id === "qc" ? groverOptimal(n) : Math.ceil(n / hands(id));
+}
+
+/** С какого n квантовому нужно меньше шагов подряд, чем classical: n/h = π/4·√n → n = (h·π/4)². */
+export function stepCrossover(id: Classical): number {
+  return ((hands(id) * Math.PI) / 4) ** 2;
+}
+
+/** Во сколько раз одно ядро сильнее одного потока видеокарты. */
+export function laneRatio(): number {
+  return executors.core.ops_per_s / laneRate("gpu");
+}
+
+/** Во сколько раз криостат холоднее реликтового излучения. */
+export function coldRatio(): number {
+  return params.cryostat.cmb_kelvin / params.cryostat.kelvin;
+}
+
+/**
+ * Делимая работа на всём исполнителе: items · ticks ÷ тиков в секунду.
+ * Квантовый компьютер считает такую работу обычными операциями — без ускорения; для цепочки
+ * берём его полную скорость, то есть подыгрываем ему.
+ */
+export function workSeconds(id: ExecutorId, items: number, ticks: number): number {
+  return (items * ticks) / executors[id].ops_per_s;
 }

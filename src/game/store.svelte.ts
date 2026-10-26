@@ -1,6 +1,6 @@
 import { initial, isProgress, type Progress } from "./progress";
 
-const KEY = "tsena-kubita/v1";
+const KEY = "tsena-kubita/v2";
 
 function load(): Progress {
   try {

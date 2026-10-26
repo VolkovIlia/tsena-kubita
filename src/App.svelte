@@ -7,6 +7,7 @@
   import { enter, finish, initial } from "./game/progress";
   import { game, update } from "./game/store.svelte";
   import { ru } from "./i18n/ru";
+  import DateCard from "./ui/DateCard.svelte";
   import Header from "./ui/Header.svelte";
   import KnownCard from "./ui/KnownCard.svelte";
 
@@ -30,7 +31,7 @@
     queueMicrotask(() => heading?.focus());
   }
 
-  /** Конец главы: следующая глава, а после финала — новая неделя с чистого листа. */
+  /** Конец главы: следующая глава, а после финала — новая партия с чистого листа. */
   function done() {
     if (!current) return;
     const id = current;
@@ -56,7 +57,7 @@
   <Header {current} />
   {#if current}
     <main>
-      <p class="eyebrow">{ru.daysFull[chapters[chapterIndex(current)].day]}</p>
+      <DateCard event={chapters[chapterIndex(current)].event} />
       <h1 tabindex="-1" bind:this={heading}>{ru.chapters[current]}</h1>
       {#key visit}
         {#if known.length}

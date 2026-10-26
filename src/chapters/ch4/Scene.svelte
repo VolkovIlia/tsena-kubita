@@ -1,191 +1,214 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
-  import params from "../../../data/params.json";
+  import { onDestroy, untrack } from "svelte";
   import type { SceneProps } from "../../deck/types";
-  import { fill, fmtCount, fmtDuration, fmtNum, fmtSci } from "../../i18n/format";
+  import { fill, fmtCount } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import { cycleSeconds, DEFAULT_CHECK, opsPerCycle, physicalPerLogical, scenario, solveSeconds, steps } from "../../model/tick";
+  import { executors, laneRate, laneRatio, scenario, type ExecutorId } from "../../model/tick";
+  import Board from "../../ui/Board.svelte";
+  import ExecutorIcon from "../../ui/ExecutorIcon.svelte";
+  import Frame from "../../ui/Frame.svelte";
+  import Hands from "../../ui/Hands.svelte";
   import Lanes from "../../ui/Lanes.svelte";
-  import LogSlider from "../../ui/LogSlider.svelte";
-  import { race, reducedMotion } from "../../ui/motion";
-  import { slides } from "./slides";
+  import { animate, race } from "../../ui/motion";
+  import { exName } from "../../ui/names";
+  import { CARTOON_ITEMS, cartoon, chain, CREW } from "./times";
 
-  let { slide, set, done }: SceneProps = $props();
+  let { slide, done }: SceneProps = $props();
   const t = ru.ch4.scene;
-  const order = slides.map((s) => s.id);
-  const at = $derived(order.indexOf(slide));
-  const from = (id: string) => at >= order.indexOf(id);
-  const N = scenario.safe_codes;
-  const time = { master: solveSeconds("master", N), oracle: solveSeconds("oracle", N), factory: solveSeconds("factory", N) };
-  /** Сколько тиков Оракул делает за такт: столько клеток в плитке ширины. */
-  const ORACLE_OPS = Math.round(opsPerCycle("oracle"));
+  const lane = executors.gpu.lane;
 
-  /** Решётка одного логического кубита: 2d² шумных, d — нижняя дистанция поверхностного кода. */
-  const QUBITS = physicalPerLogical(params.surface_code.distances[0]);
-  const COLS = 2 * params.surface_code.distances[0];
-  const ROWS = QUBITS / COLS;
-  const CELL = 14;
-  const LX = (640 - COLS * CELL) / 2;
-  const FLICKER_MS = 300;
+  const VIEWS: Record<string, "screen" | "gpu" | "weak" | "cartoon" | "chain" | "board" | "machines"> = {
+    pixels: "screen",
+    howGpu: "gpu",
+    weak: "weak",
+    warp: "gpu",
+    diverge: "gpu",
+    same: "gpu",
+    cartoonBet: "cartoon",
+    cartoonRace: "cartoon",
+    cartoonDone: "cartoon",
+    chainBet: "chain",
+    chainRace: "chain",
+    chainDone: "chain",
+    board: "board",
+    bridge: "machines",
+    rule: "machines",
+  };
+  const view = $derived(VIEWS[slide]);
 
-  /** Панель под гонкой: сейф, метрономы такта, ширина такта, решётка кубитов. */
-  const panel = $derived(
-    slide === "price" ? "beat" : slide === "width" ? "width" : slide === "qubits" || slide === "ratio" ? "lattice" : "safe",
-  );
-  const sliders = $derived(from("slider"));
+  /** Экран 32×18 точек: каждая загорается в своё (псевдослучайное) время, независимо от соседей. */
+  const COLS = 32;
+  const ROWS = 18;
+  const CELL = 20;
+  const PIXELS = Array.from({ length: COLS * ROWS }, (_, i) => {
+    const x = i % COLS;
+    const y = Math.floor(i / COLS);
+    const sun = (x - 23) ** 2 + (y - 5) ** 2 <= 12;
+    const hill = y >= 12 + 2 * Math.sin(x / 4);
+    const at = Math.abs((Math.sin(i * 12.9898) * 43758.5453) % 1);
+    return { x: x * CELL, y: y * CELL, tone: sun ? 1 : hill ? 0.7 : 0.3, at };
+  });
+  /** Ширина полосы одного ядра; полоса ядра видеокарты — в laneRatio() раз короче. */
+  const BAR = 480;
+  const MACHINES: ExecutorId[] = ["core", "cores", "gpu", "qc"];
 
-  // Гонки на сейфе 10¹⁶ кодов
+  let p = $state(0);
   let clock = $state(0);
   let started = $state(false);
   let cancel = () => {};
   onDestroy(() => cancel());
 
-  function start() {
-    started = true;
-    const tEnd = slide === "race1" ? Math.max(time.master, time.oracle) : time.factory;
-    cancel = race(tEnd, (v) => (clock = v), done);
-  }
-
+  /** Смена слайда: прошлые анимации отменяются, каждый вид начинает со своего кадра. */
   $effect(() => {
     const id = slide;
-    cancel();
-    started = false;
-    if (id === "factory") clock = 0;
+    untrack(() => {
+      cancel();
+      cancel = () => {};
+      started = false;
+      p = id === "same" ? 1 : 0;
+      clock = id === "cartoonDone" || id === "chainDone" ? Infinity : 0;
+      if (id === "pixels") cancel = animate(1500, (f) => (p = f));
+      if (id === "howGpu") cancel = animate(1200, (f) => (p = f));
+    });
   });
 
-  // Ползунки: значения — log10
-  let logN = $state(scenario.slider_log_n_min);
-  let logSpeed = $state(0);
-  let logCheck = $state(Math.log10(DEFAULT_CHECK));
-  const speedMax = Math.log10(scenario.oracle_speedup_slider);
-  const checkMin = Math.log10(DEFAULT_CHECK);
-  const checkMax = Math.log10(scenario.check_ticks_realistic);
-  const n = $derived(10 ** logN);
-  const speed = $derived(10 ** logSpeed);
-  const check = $derived(Math.round(10 ** logCheck));
-  const tF = $derived(solveSeconds("factory", n, check));
-  const tO = $derived(solveSeconds("oracle", n, check, speed));
+  const times = $derived(view === "chain" ? chain : cartoon);
+  const lanes = $derived(CREW.map((id) => ({ id, seconds: times[id] })));
+  const half = $derived(p >= 1 ? t.halfDone : p >= 0.5 ? t.halfB : t.halfA);
+  const card = $derived(
+    view === "chain"
+      ? { ...t.chain, size: fill(t.chain.size, { payments: fmtCount(scenario.payments) }) }
+      : {
+          ...t.cartoon,
+          size: fill(t.cartoon.size, {
+            frames: fmtCount(scenario.cartoon_frames),
+            pixels: fmtCount(scenario.cartoon_pixels),
+          }),
+        },
+  );
 
-  $effect(() => set("logN", logN));
-  $effect(() => set("logSpeed", logSpeed));
-  $effect(() => set("logCheck", logCheck));
-  $effect(() => {
-    if ((slide === "slider" && tO <= tF) || (slide === "speed" && logSpeed >= speedMax)) done();
-    if (slide === "check" && logCheck >= checkMax) done();
-  });
+  function start() {
+    started = true;
+    cancel = race(Math.max(...Object.values(times)), (v) => (clock = v), done);
+  }
 
-  const lanes = $derived.by(() => {
-    if (sliders)
-      return [
-        { id: "factory" as const, seconds: tF },
-        { id: "oracle" as const, seconds: tO },
-      ];
-    if (!from("race1") || from("price")) return [];
-    const list = [
-      { id: "master" as const, seconds: time.master, checks: N },
-      { id: "oracle" as const, seconds: time.oracle, checks: steps("oracle", N), mood: slide === "race2Done" ? ("sad" as const) : undefined },
-    ];
-    return from("factory") ? [...list, { id: "factory" as const, seconds: time.factory, checks: N }] : list;
-  });
-  const laneT = $derived(sliders ? Math.min(tF, tO) : clock);
-
-  let lit = $state(new Set<number>());
-  $effect(() => {
-    if (panel !== "lattice" || reducedMotion()) return;
-    const id = setInterval(() => {
-      lit = new Set(Array.from({ length: Math.round(QUBITS / 20) }, () => Math.floor(Math.random() * QUBITS)));
-    }, FLICKER_MS);
-    return () => clearInterval(id);
-  });
+  function runGroup() {
+    started = true;
+    cancel = animate(3000, (f) => (p = f), done);
+  }
 </script>
 
 <div class="scene">
-  <svg viewBox="0 0 640 230" role="img" aria-label={t.label}>
-    {#if panel === "safe"}
-      <g class="safe">
-        <rect x="40" y="20" width="190" height="190" rx="14" />
-        <circle cx="135" cy="115" r="48" />
-        <circle cx="135" cy="115" r="8" class="hub" />
-        {#each Array.from({ length: 12 }, (_, i) => i) as i}
-          <line x1="135" y1="71" x2="135" y2="81" transform="rotate({i * 30} 135 115)" />
+  {#if view === "screen"}
+    <Frame>
+      <svg viewBox="0 0 {COLS * CELL} {ROWS * CELL}" role="img" aria-label={t.screen}>
+        {#each PIXELS as px}
+          <rect
+            class="px"
+            class:on={px.at < p}
+            x={px.x + 1}
+            y={px.y + 1}
+            width={CELL - 2}
+            height={CELL - 2}
+            style:opacity={px.at < p ? px.tone : 1}
+          />
         {/each}
-      </g>
-      <text x="260" y="95">{fill(t.codes, { n: sliders ? fmtSci(n) : fmtCount(N) })}</text>
-      <text x="260" y="145" class="muted">{fill(t.check, { m: fmtCount(sliders ? check : DEFAULT_CHECK) })}</text>
-    {:else if panel === "beat"}
-      {#each [["oracle", 170, "slow"], ["factory", 470, "steady"]] as const as [who, x, kind]}
-        <g class="who-{who}">
-          <circle cx={x} cy="80" r="48" class="lamp {kind}" />
-          <text x={x} y="170" text-anchor="middle" class="name">{ru.names[who]}</text>
-          <text x={x} y="205" text-anchor="middle" class="muted">{fill(t.beat, { t: fmtDuration(cycleSeconds(who)) })}</text>
+      </svg>
+    </Frame>
+  {:else if view === "weak"}
+    <Frame>
+      <svg viewBox="0 0 640 360" role="img" aria-label={t.weak}>
+        <g class="ex-core">
+          <ExecutorIcon ex="core" size={56} x={24} y={70} />
+          <text class="name" x="100" y="92">{exName("core")}</text>
+          <rect class="bar" x="100" y="104" width={BAR} height="28" />
+          <text class="num" x="100" y="164">{fill(t.rate, { rate: fmtCount(executors.core.ops_per_s) })}</text>
         </g>
+        <g class="ex-gpu">
+          <ExecutorIcon ex="gpu" size={56} x={24} y={210} />
+          <text class="name" x="100" y="232">{t.oneHand}</text>
+          <rect class="bar" x="100" y="244" width={BAR / laneRatio()} height="28" />
+          <text class="num" x="100" y="304">{fill(t.rate, { rate: fmtCount(laneRate("gpu")) })}</text>
+        </g>
+      </svg>
+    </Frame>
+  {:else if view === "gpu"}
+    <div class="solo">
+      <Hands
+        ex="gpu"
+        mode="split"
+        items={lane.lanes}
+        progress={p}
+        warp={slide === "warp"}
+        divergent={slide === "diverge"}
+        showSteps={false}
+      />
+      <p class="muted">{t.gpu}</p>
+      {#if slide === "diverge"}
+        <p class="half" aria-live="polite">{started ? half : ""}</p>
+        <div class="actions">
+          <button class="primary" disabled={started} onclick={runGroup}>{t.runGroup}</button>
+        </div>
+      {/if}
+    </div>
+  {:else if view === "cartoon" || view === "chain"}
+    <p class="card"><strong>{card.title}.</strong> {card.size}. <span class="muted">{card.note}.</span></p>
+    <div class="crew">
+      {#each CREW as id (id)}
+        <Hands
+          ex={id}
+          mode={view === "chain" ? "chain" : "split"}
+          items={view === "chain" ? scenario.payments : CARTOON_ITEMS}
+          progress={clock / times[id]}
+        />
       {/each}
-    {:else if panel === "width"}
-      <g class="who-factory">
-        <rect x="110" y="20" width="120" height="120" class="tile dense" />
-        <text x="170" y="175" text-anchor="middle" class="name">{ru.names.factory}</text>
-        <text x="170" y="210" text-anchor="middle" class="muted">{fill(t.perCycle, { n: fmtCount(opsPerCycle("factory")) })}</text>
-      </g>
-      <g class="who-oracle">
-        {#each Array.from({ length: ORACLE_OPS }, (_, i) => i) as i}
-          <rect x={475 - 15 * ORACLE_OPS + 30 * i} y="70" width="20" height="20" class="tile" />
-        {/each}
-        <text x="470" y="175" text-anchor="middle" class="name">{ru.names.oracle}</text>
-        <text x="470" y="210" text-anchor="middle" class="muted">{fill(t.perCycle, { n: String(ORACLE_OPS) })}</text>
-      </g>
-    {:else}
-      <g class="lattice">
-        {#each Array.from({ length: QUBITS }, (_, i) => i) as i}
-          <circle cx={LX + (i % COLS) * CELL + CELL / 2} cy={Math.floor(i / COLS) * CELL + CELL / 2} r="4.5" class:lit={lit.has(i)} />
-        {/each}
-      </g>
-      <text x="320" y={ROWS * CELL + 30} text-anchor="middle">{fill(t.lattice, { n: fmtCount(QUBITS) })}</text>
+    </div>
+    <div class="lanes"><Lanes {lanes} t={clock} /></div>
+    {#if slide === "cartoonRace" || slide === "chainRace"}
+      <div class="actions"><button class="primary" disabled={started} onclick={start}>{ru.ui.startRace}</button></div>
     {/if}
-  </svg>
-
-  {#if lanes.length}
-    <div class="lanes"><Lanes {lanes} t={laneT} /></div>
-  {/if}
-  {#if sliders}
-    <p class="num times">{fill(t.times, { f: fmtDuration(tF), o: fmtDuration(tO) })}</p>
-    <LogSlider
-      label={fill(t.sliderN, { n: fmtSci(n) })}
-      min={scenario.slider_log_n_min}
-      max={scenario.slider_log_n_max}
-      step={0.1}
-      bind:value={logN}
-    />
-    {#if from("speed")}
-      <LogSlider label={fill(t.sliderSpeed, { x: fmtNum(speed) })} min={0} max={speedMax} step={1} bind:value={logSpeed} />
-    {/if}
-    {#if from("check")}
-      <LogSlider label={fill(t.sliderCheck, { m: fmtCount(check) })} min={checkMin} max={checkMax} step={1} bind:value={logCheck} />
-    {/if}
-  {/if}
-  {#if (slide === "race1" || slide === "race2") && !started}
-    <div class="actions"><button class="primary" onclick={start}>{ru.ui.startRace}</button></div>
-  {:else if started}
-    <p class="num clock" aria-live="off">{fill(ru.ui.clock, { t: fmtDuration(clock) })}</p>
+  {:else if view === "board"}
+    <div class="boards">
+      <Board ids={CREW} rows={["hands", "rate"]} caption={t.boardHands} />
+      <Board ids={CREW} rows={["time"]} task="split" n={CARTOON_ITEMS} ticks={scenario.pixel_ticks} caption={t.boardCartoon} />
+      <Board ids={CREW} rows={["time"]} task="chain" n={scenario.payments} ticks={scenario.payment_ticks} caption={t.boardChain} />
+    </div>
+  {:else}
+    <ul class="machines" aria-label={t.machines}>
+      {#each MACHINES as id (id)}
+        <li class="ex-{id}" class:later={id === "qc"}>
+          <ExecutorIcon ex={id} size={64} />
+          <span>{exName(id)}</span>
+        </li>
+      {/each}
+    </ul>
   {/if}
 </div>
 
 <style>
-  svg { width: 100%; height: auto; display: block; }
-  text { font-size: 26px; fill: var(--ink); }
-  text.muted { fill: var(--muted); }
-  text.name { fill: var(--who); font-weight: 600; }
-  .safe rect { fill: var(--paper); stroke: var(--ink); stroke-width: 4; }
-  .safe circle { fill: none; stroke: var(--ink); stroke-width: 4; }
-  .safe .hub { fill: var(--ink); }
-  .safe line { stroke: var(--ink); stroke-width: 3; }
-  .lamp { fill: var(--who); }
-  .lamp.slow { animation: blink 1s steps(1) infinite; }
-  .lamp.steady { opacity: 0.85; }
-  @keyframes blink { 50% { opacity: 0.15; } }
-  .tile { fill: var(--who); }
-  .lattice circle { fill: var(--oracle); opacity: 0.35; transition: opacity 200ms; }
-  .lattice circle.lit { opacity: 1; fill: var(--margo); }
+  .scene { position: relative; }
+  text { font-size: 22px; fill: var(--ink); }
+  .name { font-weight: 600; fill: var(--ex); }
+  .num { fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { fill: var(--ex); }
+  .px { fill: var(--grid); stroke: var(--line); stroke-width: 0.5; }
+  .px.on { fill: var(--gpu); stroke: none; }
+  .solo { display: grid; justify-items: center; gap: 0.25rem; }
+  .muted { color: var(--muted); }
+  p { margin: 0; }
+  .half { min-height: 1.5em; font-weight: 600; }
+  .card { margin-bottom: 0.5rem; }
+  /* Колонки фиксированы: меняющиеся числа в подписях не двигают картинку. */
+  .crew { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: 0.75rem 1.5rem; }
+  .crew > :global(:last-child) { grid-column: 1 / -1; }
+  @media (min-width: 600px) {
+    .crew { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr); }
+    .crew > :global(:last-child) { grid-column: auto; }
+  }
   .lanes { margin-top: 0.75rem; }
-  .times { font-weight: 600; margin: 0.75rem 0 0; }
-  .clock { color: var(--muted); margin: 0.5rem 0 0; }
+  .actions { margin: 0.75rem 0 0; }
+  .boards { display: grid; gap: 0.25rem; }
+  .machines { list-style: none; padding: 0; margin: 0.5rem 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 2rem; }
+  .machines li { display: grid; justify-items: center; gap: 0.25rem; font-weight: 600; color: var(--ex); }
+  .later { opacity: 0.45; }
 </style>

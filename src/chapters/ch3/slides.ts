@@ -1,107 +1,126 @@
 import type { Ctx, Slide } from "../../deck/types";
-import { fill, fmtCount, fmtPercent, fmtTimes } from "../../i18n/format";
+import { eventYear } from "../../game/chapters";
+import { fill, fmtCount, fmtDuration, fmtNum, fmtPercent, fmtTimes } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
-import { groverOptimal, groverSuccess, oracleFavour, scenario } from "../../model/tick";
+import { amdahl, hands, scenario } from "../../model/tick";
+import { exName } from "../../ui/names";
+import { cartoon, chain, GHZ, speedup } from "./times";
 
 const t = ru.ch3;
-const DOORS = scenario.pinball_doors;
-export const OPTIMAL = groverOptimal(DOORS);
-export const REPEATS = [1, 2, 3, 4];
-
-/** Цепочка шансов после 0…k пар «Метка → Отражение». */
-export function chain(k: number): string {
-  return Array.from({ length: k + 1 }, (_, j) => fmtPercent(groverSuccess(DOORS, j))).join(" → ");
-}
-
-const chosen = (c: Ctx) => Number(c.answers.repeats ?? OPTIMAL);
-const pct = (c: Ctx, key: string) => fmtPercent(c.scene[key] ?? 0);
-
-function verdictKey(c: Ctx): keyof typeof t.verdict.reply {
-  const k = chosen(c);
-  return k < OPTIMAL ? "under" : k > OPTIMAL ? "over" : "right";
-}
+const one = exName("core");
+const many = exName("cores");
+const n = String(hands("cores"));
+const xn = fmtTimes(hands("cores"));
+const x = fmtTimes(speedup(0));
+const ghz = { fOne: fmtNum(GHZ.one), fAll: fmtNum(GHZ.all) };
+const serial = (c: Ctx) => c.scene.serial ?? 0;
 
 export const slides: Slide[] = [
-  { id: "arrive", top: () => t.arrive.top, say: { who: "oracle", text: () => t.arrive.say }, act: { kind: "next" } },
-  { id: "future", top: () => t.future.top, say: { who: "oracle", text: () => t.future.say }, act: { kind: "next" } },
   {
-    id: "doors",
-    top: () => fill(t.doors.top, { doors: String(DOORS) }),
-    say: { who: "margo", text: () => t.doors.say },
-    bottom: () => t.doors.bottom,
+    id: "freeLunch",
+    top: () => t.freeLunch.top,
+    quote: { who: "sutter", text: () => t.freeLunch.quote, cite: "sutter" },
+    act: { kind: "next" },
+  },
+  {
+    id: "howCores",
+    top: () => fill(t.howCores.top, { many, n }),
+    bottom: () => fill(t.howCores.bottom, { n, ...ghz }),
+    cites: ["sutter", "amd"],
+    act: { kind: "next" },
+  },
+  {
+    id: "cartoonBet",
+    top: () =>
+      fill(t.cartoonBet.top, {
+        frames: fmtCount(scenario.cartoon_frames),
+        pixels: fmtCount(scenario.cartoon_pixels),
+        ticks: fmtCount(scenario.pixel_ticks),
+      }),
+    bottom: () => fill(t.cartoonBet.bottom, { many, one }),
+    act: {
+      kind: "bet",
+      id: "speedup",
+      options: [
+        { id: "x64", label: () => fill(t.cartoonBet.x64, { x: xn }) },
+        { id: "almost", label: () => fill(t.cartoonBet.almost, { x }) },
+        { id: "twice", label: () => t.cartoonBet.twice },
+      ],
+      correct: () => (speedup(0) < hands("cores") ? "almost" : "x64"),
+    },
+  },
+  {
+    id: "cartoonRace",
+    top: (c) =>
+      c.scene.cartoon
+        ? fill(t.cartoonRace.done.top, { one, many, tOne: fmtDuration(cartoon.core), tMany: fmtDuration(cartoon.cores), x, n: xn })
+        : fill(t.cartoonRace.reply[c.answers.speedup as keyof typeof t.cartoonRace.reply] ?? t.cartoonRace.reply.almost, { n: xn }),
+    bottom: (c) => (c.scene.cartoon ? fill(t.cartoonRace.done.bottom, { n: xn, x, ...ghz }) : t.cartoonRace.bottom),
+    curious: [() => fill(t.cartoonRace.curious, { tick: ru.chapters.ch1, n, x, ...ghz })],
+    cites: ["amd"],
     act: { kind: "scene" },
   },
   {
-    id: "lottery",
-    top: (c) => fill(t.lottery.top, { looks: String(c.scene.looks ?? 0), hits: String(c.scene.hits ?? 0) }),
-    say: { who: "oracle", text: () => t.lottery.say },
-    act: { kind: "next" },
-  },
-  { id: "bars", top: () => t.bars.top, act: { kind: "next" } },
-  { id: "mark", top: () => t.mark.top, act: { kind: "scene" } },
-  {
-    id: "markDone",
-    top: (c) => fill(t.markDone.top, { p: pct(c, "p") }),
-    act: { kind: "next", label: () => t.markDone.label },
-  },
-  { id: "reflect", top: () => t.reflect.top, act: { kind: "scene" } },
-  {
-    id: "reflectDone",
-    top: (c) => fill(t.reflectDone.top, { before: pct(c, "p0"), after: pct(c, "p1") }),
-    say: { who: "oracle", text: () => t.reflectDone.say },
-    act: { kind: "next", label: () => t.reflectDone.label },
-  },
-  {
-    id: "bet",
-    top: () => fill(t.bet.top, { p: fmtPercent(groverSuccess(DOORS, 1)) }),
-    bottom: () => t.bet.bottom,
+    id: "chainBet",
+    top: () => fill(t.chainBet.top, { payments: fmtCount(scenario.payments) }),
+    bottom: () => fill(t.chainBet.bottom, { many, one }),
     act: {
       kind: "bet",
-      id: "repeats",
-      options: REPEATS.map((k) => ({ id: String(k), label: () => String(k) })),
-      correct: () => String(OPTIMAL),
+      id: "chain",
+      options: [
+        { id: "x64", label: () => fill(t.chainBet.x64, { x: xn }) },
+        { id: "some", label: () => t.chainBet.some },
+        { id: "same", label: () => t.chainBet.same },
+      ],
+      correct: () => (chain.cores >= chain.core ? "same" : chain.core / chain.cores > 32 ? "x64" : "some"),
     },
   },
-  { id: "play", top: (c) => fill(t.play.top, { k: String(chosen(c)) }), act: { kind: "scene" } },
   {
-    id: "verdict",
-    top: (c) => fill(t.verdict.top, { chain: chain(chosen(c)) }),
-    say: { who: "oracle", text: (c) => t.verdict.reply[verdictKey(c)] },
+    id: "chainRace",
+    top: (c) =>
+      c.scene.chain
+        ? fill(t.chainRace.done.top, { one, many, tOne: fmtDuration(chain.core), tMany: fmtDuration(chain.cores), n })
+        : (t.chainRace.reply[c.answers.chain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.same),
+    bottom: (c) => (c.scene.chain ? fill(t.chainRace.done.bottom, { ...ghz, rest: String(hands("cores") - 1) }) : t.chainRace.bottom),
+    cites: ["amd"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "amdahl",
+    top: () => t.amdahl.top,
+    bottom: (c) =>
+      serial(c) === 0
+        ? fill(t.amdahl.none, { many, x })
+        : fill(t.amdahl.some, {
+            s: fmtPercent(serial(c)),
+            many,
+            x: fmtTimes(speedup(serial(c))),
+            w: fmtCount(scenario.amdahl_workers),
+            xw: fmtTimes(amdahl(serial(c), scenario.amdahl_workers)),
+          }),
+    act: { kind: "scene" },
+  },
+  {
+    id: "amdahlHow",
+    top: () => fill(t.amdahlHow.top, { year: String(eventYear("amdahl")) }),
+    bottom: (c) =>
+      serial(c) === 0
+        ? t.amdahlHow.none
+        : fill(t.amdahlHow.some, { s: fmtPercent(serial(c)), lim: fmtTimes(1 / serial(c)) }),
+    cites: ["amdahl"],
     act: { kind: "next" },
   },
+  { id: "razbor", top: () => fill(t.razbor.top, { many, x }), act: { kind: "next" } },
   {
-    id: "optimum",
-    top: () =>
-      fill(t.optimum.top, {
-        k: String(OPTIMAL),
-        pk: fmtPercent(groverSuccess(DOORS, OPTIMAL)),
-        next: fmtPercent(groverSuccess(DOORS, OPTIMAL + 1)),
-      }),
-    act: { kind: "scene", label: () => t.optimum.label },
-  },
-  {
-    id: "million",
-    top: () =>
-      fill(t.million.top, {
-        n: fmtCount(scenario.pinball_big_n),
-        k: fmtCount(groverOptimal(scenario.pinball_big_n)),
-      }),
-    say: { who: "margo", text: () => t.million.say },
-    bottom: () => t.million.bottom,
-    act: { kind: "next" },
-  },
-  {
-    id: "grover",
-    top: () => t.grover.top,
-    say: { who: "master", text: () => t.grover.say, note: t.grover.note },
-    curious: [() => t.grover.footnote1, () => fill(t.grover.footnote2, { x: fmtTimes(oracleFavour()) })],
-    cites: ["grover", "bbbv", "threeBlue"],
+    id: "bridge",
+    top: () => fill(t.bridge.top, { n, g: fmtCount(hands("gpu")) }),
+    bottom: () => t.bridge.bottom,
     act: { kind: "next" },
   },
   {
     id: "rule",
     top: () => t.rule.top,
     rule: "r3",
-    act: { kind: "next", label: () => t.rule.label },
+    act: { kind: "next", label: () => fill(ru.ui.nextChapter, { name: ru.chapters.ch4 }) },
   },
 ];

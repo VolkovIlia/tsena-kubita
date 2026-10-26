@@ -1,161 +1,151 @@
-import params from "../../../data/params.json";
-import type { Ctx, Slide } from "../../deck/types";
-import { fill, fmtCount, fmtDuration, fmtNum, fmtPercent, fmtSci } from "../../i18n/format";
+import type { Slide } from "../../deck/types";
+import { eventYear } from "../../game/chapters";
+import { fill, fmtCount, fmtDuration, fmtTimes } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
-import {
-  bestExecutor,
-  crossover,
-  cycleSeconds,
-  DEFAULT_CHECK,
-  oracleShareDone,
-  opsPerCycle,
-  passwordLength,
-  physicalPerLogical,
-  powerOfTenBelow,
-  rateRatio,
-  scenario,
-  solveSeconds,
-  steps,
-} from "../../model/tick";
+import { bestExecutor, executors, hands, laneRate, laneRatio, scenario, type Classical } from "../../model/tick";
+import { exName } from "../../ui/names";
+import { cartoon, chain, CREW } from "./times";
 
 const t = ru.ch4;
-const N = scenario.safe_codes;
-const time = (id: "master" | "oracle" | "factory") => fmtDuration(solveSeconds(id, N));
-const ratio = fmtCount(powerOfTenBelow(rateRatio("factory", "oracle")));
-const first = crossover("factory");
-const pwd = passwordLength(first.n);
-const [dMin, dMax] = params.surface_code.distances;
-
-/** Ползунки сцены пишут log10 значений; до первого движения — начальные значения. */
-const speedOf = (c: Ctx) => 10 ** (c.scene.logSpeed ?? 0);
-const checkOf = (c: Ctx) => Math.round(10 ** (c.scene.logCheck ?? Math.log10(DEFAULT_CHECK)));
-
-const options = (ids: ("master" | "factory" | "oracle")[]) => ids.map((id) => ({ id, label: () => ru.names[id] }));
+const lane = executors.gpu.lane;
+const crew = CREW.map((id) => ({ id, label: () => exName(id) }));
+/** Времена гонки и имена ядер — для итоговых строк обоих заказов. */
+const results = (s: Record<Classical, number>) => ({
+  core: fmtDuration(s.core),
+  cores: fmtDuration(s.cores),
+  gpu: fmtDuration(s.gpu),
+  coreName: exName("core"),
+  coresName: exName("cores"),
+});
+const weaker = () => fmtTimes(laneRatio());
 
 export const slides: Slide[] = [
   {
-    id: "order",
-    top: () => fill(t.order.top, { n: fmtCount(N), digits: String(Math.log10(N)), m: fmtCount(DEFAULT_CHECK) }),
-    bottom: () => t.order.bottom,
-    act: {
-      kind: "bet",
-      id: "safe",
-      options: options(["master", "oracle"]),
-      correct: () => bestExecutor({ master: solveSeconds("master", N), oracle: solveSeconds("oracle", N) }),
-    },
-  },
-  {
-    id: "race1",
-    top: (c) => t.race1.reply[c.answers.safe as "oracle" | "master"] ?? t.race1.reply.oracle,
-    bottom: () => t.race1.bottom,
-    act: { kind: "scene" },
-  },
-  {
-    id: "race1Done",
-    top: () => fill(t.race1Done.top, { m: time("master"), o: time("oracle"), k: fmtCount(steps("oracle", N)) }),
-    say: { who: "margo", text: () => t.race1Done.say },
-    basis: ["master", "oracle"],
+    id: "pixels",
+    top: () => t.pixels.top,
+    bottom: () => fill(t.pixels.bottom, { year: String(eventYear("cuda")) }),
+    cites: ["cudaGuide", "cudaGuide9", "cuda"],
     act: { kind: "next" },
   },
   {
-    id: "factory",
-    top: () => t.factory.top,
-    say: { who: "factory", text: () => t.factory.say },
-    bottom: () => t.factory.bottom,
-    act: {
-      kind: "bet",
-      id: "safe2",
-      options: options(["factory", "oracle"]),
-      correct: () => bestExecutor({ factory: solveSeconds("factory", N), oracle: solveSeconds("oracle", N) }),
-    },
-  },
-  {
-    id: "race2",
-    top: (c) => t.race2.reply[c.answers.safe2 as "factory" | "oracle"] ?? t.race2.reply.factory,
-    bottom: () => t.race2.bottom,
-    act: { kind: "scene" },
-  },
-  {
-    id: "race2Done",
+    id: "howGpu",
     top: () =>
-      fill(t.race2Done.top, {
-        f: time("factory"),
-        pct: fmtPercent(oracleShareDone(N, solveSeconds("factory", N))),
+      fill(t.howGpu.top, { sm: fmtCount(lane.sm), perSm: fmtCount(lane.lanes_per_sm), lanes: fmtCount(lane.lanes) }),
+    bottom: () =>
+      fill(t.howGpu.bottom, {
+        ch: ru.chapters.ch3,
+        cores: fmtCount(hands("cores")),
+        x: fmtTimes(hands("gpu") / hands("cores")),
       }),
-    say: { who: "oracle", text: () => t.race2Done.say },
-    basis: ["factory", "oracle"],
-    act: { kind: "next", label: () => t.race2Done.label },
-  },
-  {
-    id: "price",
-    top: () =>
-      fill(t.price.top, { oq: fmtDuration(cycleSeconds("oracle")), fq: fmtDuration(cycleSeconds("factory")) }),
+    cites: ["nvidia"],
     act: { kind: "next" },
   },
   {
-    id: "width",
-    top: () =>
-      fill(t.width.top, { fo: fmtCount(opsPerCycle("factory")), oo: String(Math.round(opsPerCycle("oracle"))) }),
+    id: "weak",
+    top: () => fill(t.weak.top, { x: weaker() }),
+    bottom: () => t.weak.bottom,
+    curious: [
+      () =>
+        fill(t.weak.curious, {
+          clock: fmtCount(lane.clock_hz),
+          bits: fmtCount(lane.bits_per_op),
+          lane: fmtCount(laneRate("gpu")),
+        }),
+    ],
+    cites: ["nvidia", "amd", "uops", "cudaGuide"],
     act: { kind: "next" },
   },
   {
-    id: "qubits",
-    top: () =>
-      fill(t.qubits.top, { min: fmtCount(physicalPerLogical(dMin)), max: fmtCount(physicalPerLogical(dMax)) }),
-    cites: ["beverland"],
+    id: "warp",
+    top: () => fill(t.warp.top, { warp: fmtCount(lane.warp) }),
+    bottom: () => t.warp.bottom,
+    cites: ["cudaGuide"],
     act: { kind: "next" },
   },
   {
-    id: "ratio",
-    top: () => fill(t.ratio.top, { ratio }),
-    bottom: () => t.ratio.bottom,
+    id: "diverge",
+    top: () => t.diverge.top,
+    bottom: () => t.diverge.bottom,
+    cites: ["cudaGuide"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "same",
+    top: () => t.same.top,
+    bottom: () => fill(t.same.bottom, { ch: ru.chapters.ch3 }),
+    cites: ["cudaGuide9", "cudaGuide"],
+    act: { kind: "next" },
+  },
+  {
+    id: "cartoonBet",
+    top: () =>
+      fill(t.cartoonBet.top, {
+        frames: fmtCount(scenario.cartoon_frames),
+        pixels: fmtCount(scenario.cartoon_pixels),
+        ticks: fmtCount(scenario.pixel_ticks),
+      }),
+    bottom: () => t.cartoonBet.bottom,
+    act: { kind: "bet", id: "gpuCartoon", options: crew, correct: () => bestExecutor(cartoon) },
+  },
+  {
+    id: "cartoonRace",
+    top: (c) => t.cartoonRace.reply[c.answers.gpuCartoon as Classical] ?? t.cartoonRace.reply.gpu,
+    bottom: () => t.cartoonRace.bottom,
+    act: { kind: "scene" },
+  },
+  {
+    id: "cartoonDone",
+    top: () => fill(t.cartoonDone.top, results(cartoon)),
+    bottom: () => fill(t.cartoonDone.bottom, { x: weaker(), lanes: fmtCount(lane.lanes) }),
+    act: { kind: "next" },
+  },
+  {
+    id: "chainBet",
+    top: () => fill(t.chainBet.top, { payments: fmtCount(scenario.payments) }),
+    bottom: () => t.chainBet.bottom,
+    act: {
+      kind: "bet",
+      id: "gpuChain",
+      options: [
+        { id: "cpu", label: () => fill(t.chainBet.cpu, { one: exName("core"), many: exName("cores") }) },
+        { id: "gpu", label: () => exName("gpu") },
+      ],
+      /** Одно ядро и 64 ядра на цепочке идут вровень, поэтому ставка — «процессор или видеокарта». */
+      correct: () => (Math.min(chain.core, chain.cores) <= chain.gpu ? "cpu" : "gpu"),
+    },
+  },
+  {
+    id: "chainRace",
+    top: (c) => t.chainRace.reply[c.answers.gpuChain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.cpu,
+    bottom: () => t.chainRace.bottom,
+    act: { kind: "scene" },
+  },
+  {
+    id: "chainDone",
+    top: () => fill(t.chainDone.top, results(chain)),
+    bottom: () => fill(t.chainDone.bottom, { x: weaker() }),
+    act: { kind: "next" },
+  },
+  {
+    id: "board",
+    top: () => t.board.top,
+    bottom: () => t.board.bottom,
+    curious: [
+      () =>
+        fill(t.board.curious, {
+          peak: fmtCount(executors.gpu.ops_per_s),
+          lanes: fmtCount(lane.lanes),
+          sum: fmtCount(lane.lanes * laneRate("gpu")),
+        }),
+    ],
     cites: ["hoefler", "nvidia"],
     act: { kind: "next" },
   },
-  { id: "slider", top: () => t.slider.top, act: { kind: "scene" } },
+  { id: "bridge", top: () => t.bridge.top, bottom: () => t.bridge.bottom, act: { kind: "next" } },
   {
-    id: "found",
-    top: () =>
-      fill(t.found.top, {
-        n: fmtSci(first.n),
-        lo: String(Math.floor(pwd)),
-        hi: String(Math.ceil(pwd)),
-        t: fmtDuration(first.seconds),
-      }),
-    say: { who: "margo", text: () => t.found.say },
-    act: { kind: "next" },
+    id: "rule",
+    top: () => t.rule.top,
+    rule: "r4",
+    act: { kind: "next", label: () => fill(ru.ui.nextChapter, { name: ru.chapters.ch5 }) },
   },
-  {
-    id: "speed",
-    top: () => t.speed.top,
-    bottom: (c) =>
-      fill(t.speed.bottom, {
-        x: fmtNum(speedOf(c)),
-        t: fmtDuration(crossover("factory", DEFAULT_CHECK, speedOf(c)).seconds),
-      }),
-    act: { kind: "scene" },
-  },
-  {
-    id: "check",
-    top: (c) =>
-      fill(t.check.top, {
-        t: fmtDuration(crossover("factory", DEFAULT_CHECK, speedOf(c)).seconds),
-        m: fmtCount(DEFAULT_CHECK),
-      }),
-    bottom: (c) =>
-      fill(t.check.bottom, {
-        c: fmtCount(checkOf(c)),
-        tc: fmtDuration(crossover("factory", checkOf(c), speedOf(c)).seconds),
-      }),
-    act: { kind: "scene" },
-  },
-  {
-    id: "razbor",
-    top: () => fill(t.razbor.top, { ratio }),
-    say: { who: "oracle", text: () => t.razbor.say, note: t.razbor.note },
-    curious: [() => t.razbor.curious],
-    cites: ["ambainis"],
-    act: { kind: "next" },
-  },
-  { id: "rule", top: () => t.rule.top, rule: "r4", mood: true, act: { kind: "next", label: () => t.rule.label } },
 ];

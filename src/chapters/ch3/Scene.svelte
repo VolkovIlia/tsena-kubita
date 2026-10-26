@@ -3,149 +3,152 @@
   import type { SceneProps } from "../../deck/types";
   import { fill, fmtCount, fmtPercent } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import { mark, measure, probabilities, reflect, uniform, type Amps } from "../../model/statevector";
-  import { groverOptimal, groverSuccess, scenario } from "../../model/tick";
-  import { reducedMotion } from "../../ui/motion";
-  import Peep from "../../ui/Peep.svelte";
-  import Pinball from "./Pinball.svelte";
-  import { OPTIMAL, slides } from "./slides";
+  import { scenario } from "../../model/tick";
+  import Hands from "../../ui/Hands.svelte";
+  import Lanes from "../../ui/Lanes.svelte";
+  import LogSlider from "../../ui/LogSlider.svelte";
+  import { race } from "../../ui/motion";
+  import { exName } from "../../ui/names";
+  import { slides } from "./slides";
+  import { amdahlSeconds, cartoon, chain, CREW, type Crew } from "./times";
 
-  let { slide, ctx, set, done }: SceneProps = $props();
-  const t = ru.ch3.scene;
-  const DOORS = scenario.pinball_doors;
-  const QUBITS = Math.log2(DOORS);
-  const STEP_MS = 700;
-  const LOOKS = 3;
-  const target = Math.floor(Math.random() * DOORS);
-  const bigN = scenario.pinball_big_n;
-  const bigK = groverOptimal(bigN);
+  let { slide, set, done }: SceneProps = $props();
+  const d = ru.ch3.scene;
   const order = slides.map((s) => s.id);
   const at = $derived(order.indexOf(slide));
   const from = (id: string) => at >= order.indexOf(id);
+  const phase = $derived(
+    !from("cartoonBet") || from("bridge") ? "intro" : !from("chainBet") ? "cartoon" : !from("amdahl") ? "chain" : "amdahl",
+  );
 
-  let amps = $state<Amps>(uniform(QUBITS));
-  let opened = $state<number | null>(null);
-  let looks = 0;
-  let hits = 0;
-  let hint = $state(false);
-  let chainShown = $state<string[]>([]);
-  // Тексты markDone/reflectDone цитируют первый успешный ход; лишние нажатия их не переписывают.
-  let markRecorded = $state(false);
-  let reflectRecorded = $state(false);
-  let timers: ReturnType<typeof setTimeout>[] = [];
-  onDestroy(() => timers.forEach(clearTimeout));
+  let clock = $state(0);
+  let started = $state(false);
+  let serial = $state(0);
+  let moved = false;
+  let cancel = () => {};
+  onDestroy(() => cancel());
 
-  const chance = $derived(probabilities(amps)[target]);
-
-  function reset() {
-    timers.forEach(clearTimeout);
-    timers = [];
-    amps = uniform(QUBITS);
-    opened = null;
-    hint = false;
-    chainShown = [];
-  }
-
-  function look() {
-    opened = measure(amps, Math.random);
-    looks += 1;
-    if (opened === target) hits += 1;
-    set("looks", looks);
-    set("hits", hits);
-    if (looks >= LOOKS) done();
-  }
-
-  function onMark() {
-    amps = mark(amps, target);
-    hint = false;
-    if (slide !== "mark" || markRecorded) return;
-    markRecorded = true;
-    set("p", probabilities(amps)[target]);
-    done();
-  }
-
-  function onReflect() {
-    const u = uniform(QUBITS);
-    hint = amps.every((x, i) => Math.abs(x - u[i]) < 1e-12);
-    const p0 = probabilities(amps)[target];
-    amps = reflect(amps);
-    const p1 = probabilities(amps)[target];
-    if (slide !== "reflect" || reflectRecorded || p1 < groverSuccess(DOORS, 1) - 1e-9) return;
-    reflectRecorded = true;
-    set("p0", p0);
-    set("p1", p1);
-    done();
-  }
-
-  /** Проигрывает k пар «Метка → Отражение» от равной суперпозиции, по шагу на операцию. */
-  function play(k: number) {
-    reset();
-    set("k", k);
-    chainShown = [fmtPercent(chance)];
-    const delay = reducedMotion() ? 0 : STEP_MS;
-    for (let i = 0; i < 2 * k; i++) {
-      timers.push(
-        setTimeout(() => {
-          amps = i % 2 === 0 ? mark(amps, target) : reflect(amps);
-          if (i % 2 === 1) chainShown = [...chainShown, fmtPercent(probabilities(amps)[target])];
-        }, delay * (i + 1)),
-      );
-    }
-    timers.push(setTimeout(done, delay * (2 * k + 1)));
-  }
-
-  // Вход в слайд: сброс или проигрыш. Состояние сцены сохраняется между слайдами без действий.
+  /** Смена слайда: гонка задачи начинается с нуля, прошлые анимации отменяются. */
   $effect(() => {
-    const s = slide;
+    const id = slide;
     untrack(() => {
-      if (s === "mark" || s === "bet") reset();
-      else if (s === "play") play(Number(ctx.answers.repeats ?? OPTIMAL));
-      else if (s === "optimum") play(OPTIMAL + 1);
+      cancel();
+      cancel = () => {};
+      if (id === "cartoonBet" || id === "chainBet") {
+        clock = 0;
+        started = false;
+      }
     });
   });
 
-  const buttons = $derived(slide === "doors" ? ["look"] : slide === "mark" ? ["mark"] : slide === "reflect" ? ["mark", "reflect", "reset"] : []);
-  const locked = $derived((slide === "mark" && markRecorded) || (slide === "reflect" && reflectRecorded));
-  const showChance = $derived(from("mark") && !from("million"));
+  /** Ползунок Амдала: число уходит в колоду, первый сдвиг открывает «Дальше». */
+  $effect(() => {
+    const s = serial;
+    untrack(() => {
+      set("serial", s);
+      if (moved && slide === "amdahl") done();
+      moved = true;
+    });
+  });
+
+  const times = $derived(phase === "chain" ? chain : cartoon);
+  /** На слайде ставки сцена в покое: ни эстафеты, ни «остальные ждут» — иначе это подсказка. */
+  const betting = $derived(slide === "cartoonBet" || slide === "chainBet");
+  const raceId = $derived(phase === "chain" ? "chainRace" : "cartoonRace");
+  /** Часы гонки; после слайда гонки (в том числе при входе по ссылке) — финиш. */
+  const now = $derived(phase === "intro" ? 0 : at > order.indexOf(raceId) ? Infinity : clock);
+  const card = $derived(phase === "chain" ? d.chain : d.cartoon);
+  const size = $derived(
+    phase === "chain"
+      ? fill(d.chain.size, { payments: fmtCount(scenario.payments) })
+      : fill(d.cartoon.size, { frames: fmtCount(scenario.cartoon_frames), pixels: fmtCount(scenario.cartoon_pixels) }),
+  );
+  const lanes = $derived(
+    CREW.map((id) => ({ id, seconds: phase === "amdahl" ? amdahlSeconds(id, serial) : times[id] })),
+  );
+
+  function start() {
+    started = true;
+    const key = phase === "chain" ? "chain" : "cartoon";
+    cancel = race(
+      Math.max(...CREW.map((id) => times[id])),
+      (v) => (clock = v),
+      () => {
+        set(key, 1);
+        done();
+      },
+    );
+  }
+
+  /* Полосы Амдала: длина — время работы относительно одного ядра. */
+  const BAR = 560;
+  const W = scenario.amdahl_workers;
+  const rows = [
+    { label: exName("core"), split: 1 },
+    { label: exName("cores"), split: amdahlSeconds("cores", 0) / amdahlSeconds("core", 0) },
+    { label: fill(d.amdahl.hands, { w: fmtCount(W) }), split: 1 / W },
+  ];
+  const label = $derived({ intro: d.labelIntro, cartoon: d.labelCartoon, chain: d.labelChain, amdahl: d.labelAmdahl }[phase]);
 </script>
 
-<div class="scene">
-  <div class="cryostat"><Peep who="oracle" size={96} mood={slide === "reflectDone" ? "happy" : "calm"} /></div>
-  {#if from("million")}
-    <div class="bars">
-      <p>{fill(t.barMaster, { n: fmtCount(bigN) })}</p>
-      <div class="bar who-master" style:width="100%"></div>
-      <p>{fill(t.barOracle, { k: fmtCount(bigK) })}</p>
-      <div class="bar who-oracle" style:width="max(2px, {(100 * bigK) / bigN}%)"></div>
-    </div>
+<div class="scene" role="group" aria-label={label}>
+  {#if phase === "amdahl"}
+    <svg viewBox="0 0 640 300" aria-hidden="true">
+      <text class="title" x="40" y="36">{d.amdahl.title}</text>
+      <text class="muted" x="40" y="70">{d.amdahl.note}</text>
+      {#each rows as row, i}
+        {@const y = 118 + i * 66}
+        <text x="40" y={y}>{row.label}</text>
+        <rect class="serial" x="40" y={y + 10} width={BAR * serial} height="34" />
+        <rect class="split" x={40 + BAR * serial} y={y + 10} width={Math.max(1, BAR * (1 - serial) * row.split)} height="34" />
+      {/each}
+    </svg>
+    <div class="lanes"><Lanes {lanes} t={Infinity} /></div>
+    {#if slide === "amdahl"}
+      <LogSlider label={fill(d.slider, { s: fmtPercent(serial) })} min={0} max={scenario.amdahl_serial_max} step={0.01} bind:value={serial} />
+    {/if}
   {:else}
-    <Pinball {amps} target={from("mark") ? target : null} showMean={from("bars")} {opened} />
-  {/if}
-  {#if slide === "doors" && opened !== null}
-    <p aria-live="polite"><strong>{opened === target ? t.prize : t.empty}</strong></p>
-  {/if}
-  {#if showChance && chainShown.length === 0}
-    <p class="counter who-oracle" aria-live="polite">{fill(t.chance, { p: fmtPercent(chance) })}</p>
-  {/if}
-  {#if chainShown.length && (slide === "play" || slide === "verdict" || slide === "optimum")}
-    <p class="counter who-oracle num" aria-live="polite">{chainShown.join(" → ")}</p>
-  {/if}
-  {#if buttons.length}
-    <div class="actions">
-      {#if buttons.includes("look")}<button onclick={look}>{t.look}</button>{/if}
-      {#if buttons.includes("mark")}<button disabled={locked} onclick={onMark}>{t.mark}</button>{/if}
-      {#if buttons.includes("reflect")}<button disabled={locked} onclick={onReflect}>{t.reflect}</button>{/if}
-      {#if buttons.includes("reset")}<button disabled={locked} onclick={reset}>{t.reset}</button>{/if}
+    {#if phase !== "intro"}
+      <div class="card">
+        <p class="title">{card.title}</p>
+        <p class="num">{size}</p>
+        <p class="muted">{card.note}</p>
+      </div>
+    {/if}
+    <div class="hands">
+      {#each CREW as id (id)}
+        {#if id === "core" || slide !== "freeLunch"}
+          <Hands
+            ex={id}
+            mode={phase === "chain" && !betting ? "chain" : "split"}
+            items={phase === "chain" ? scenario.payments : scenario.cartoon_frames * scenario.cartoon_pixels}
+            progress={Math.min(1, now / times[id])}
+            showSteps={phase !== "intro" && !betting}
+          />
+        {/if}
+      {/each}
     </div>
+    {#if phase !== "intro"}
+      <div class="lanes"><Lanes {lanes} t={now} /></div>
+    {/if}
+    {#if slide === raceId}
+      <div class="actions"><button class="primary" disabled={started} onclick={start}>{ru.ui.startRace}</button></div>
+    {/if}
   {/if}
-  {#if hint && slide === "reflect"}<p class="hint who-oracle" aria-live="polite">{t.hint}</p>{/if}
 </div>
 
 <style>
   .scene { position: relative; }
-  .cryostat { display: flex; justify-content: flex-end; }
-  .bars p { margin: 0.75rem 0 0.25rem; }
-  .bar { height: 14px; background: var(--who); }
-  .counter { font-size: 1.15rem; font-weight: 600; color: var(--who); }
-  .hint { font-style: italic; color: var(--who); }
+  svg { width: 100%; height: auto; display: block; }
+  text { font-size: 24px; fill: var(--ink); }
+  .title { font-size: 28px; font-weight: 600; }
+  .muted { fill: var(--muted); color: var(--muted); }
+  .serial { fill: var(--ink); }
+  .split { fill: var(--cores); opacity: 0.45; }
+  .card { border: 2px solid var(--ink); border-radius: 6px; padding: 0.5rem 0.75rem; background: var(--paper); }
+  .card p { margin: 0; }
+  .card .title { font-size: 1.125rem; }
+  /* Колонки фиксированы: меняющиеся числа в подписях не двигают картинку. */
+  .hands { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 1rem 2.5rem; margin-top: 0.75rem; }
+  .lanes { margin-top: 0.75rem; }
 </style>

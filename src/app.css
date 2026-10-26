@@ -1,15 +1,21 @@
-/* Бюро «Счёт»: инженерная миллиметровка, одна гарнитура, табличные цифры. */
+/* Хроника «Цена кубита»: инженерная миллиметровка, одна гарнитура, табличные цифры. */
 :root {
   --paper: #f2f4ef;
   --grid: #dde5df;
   --ink: #1e2a2f;
   --muted: #56656a;
-  --master: #8a5d14;
-  --brigade: #b24a12;
-  --factory: #2f4fa8;
-  --oracle: #136f7b;
-  --margo: #a3204a;
-  --nina: #5a3e9b;
+  --core: #8a5d14;
+  --cores: #b24a12;
+  --gpu: #2f4fa8;
+  --qc: #136f7b;
+  --map-land: #ebe5d6;
+  --map-house: #d9cfba;
+  --map-road: #ffffff;
+  --map-edge: #cbbfa6;
+  --map-water: #a7cbe8;
+  --map-park: #c4ddb0;
+  --map-route: #1a73e8;
+  --map-pin: #d93025;
   --line: color-mix(in srgb, var(--ink) 22%, transparent);
   color-scheme: light dark;
 }
@@ -19,12 +25,18 @@
     --grid: #1f2a2b;
     --ink: #e6ece8;
     --muted: #9aaaa9;
-    --master: #d9a54a;
-    --brigade: #f0844a;
-    --factory: #8fa8ff;
-    --oracle: #5fd0de;
-    --margo: #f27a9c;
-    --nina: #b9a2f0;
+    --core: #d9a54a;
+    --cores: #f0844a;
+    --gpu: #8fa8ff;
+    --qc: #5fd0de;
+    --map-land: #232b28;
+    --map-house: #2e3834;
+    --map-road: #5a6661;
+    --map-edge: #151b19;
+    --map-water: #1d4866;
+    --map-park: #263f2c;
+    --map-route: #8ab4f8;
+    --map-pin: #f28b82;
   }
 }
 
@@ -43,10 +55,18 @@ body {
   background-size: 24px 24px;
   -webkit-text-size-adjust: 100%;
 }
-.page { max-width: 40rem; margin: 0 auto; padding: 1rem; }
-@media (min-width: 768px) { .page { padding: 2rem; } }
+/*
+ * Слайд — на один экран: от 600×560 страница высотой в окно, колода — столбик «слова → сцена → слова»,
+ * картинка сцены сжимается в оставшуюся высоту (Deck.svelte). На телефоне — обычная прокрутка.
+ */
+.page { max-width: 60rem; margin: 0 auto; padding: 0.75rem 1rem; }
+@media (min-width: 768px) { .page { padding: 1rem 2rem; } }
+@media (min-width: 600px) and (min-height: 560px) {
+  .page { height: 100dvh; display: flex; flex-direction: column; }
+  main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+}
 
-h1 { font-size: 2rem; line-height: 1.2; font-weight: 600; margin: 0.5rem 0 1.5rem; }
+h1 { font-size: 1.5rem; line-height: 1.2; font-weight: 600; margin: 0 0 0.75rem; }
 h1:focus, .screen:focus { outline: none; }
 h2 { font-size: 1.25rem; font-weight: 600; margin: 1.5rem 0 0.75rem; }
 p { margin: 0 0 1rem; }
@@ -82,12 +102,10 @@ summary { cursor: pointer; min-height: 44px; display: flex; align-items: center;
 details ul { padding-left: 1.25rem; }
 
 .counter { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.who-master { --who: var(--master); }
-.who-brigade { --who: var(--brigade); }
-.who-factory { --who: var(--factory); }
-.who-oracle { --who: var(--oracle); }
-.who-margo { --who: var(--margo); }
-.who-nina { --who: var(--nina); }
+.ex-core { --ex: var(--core); }
+.ex-cores { --ex: var(--cores); }
+.ex-gpu { --ex: var(--gpu); }
+.ex-qc { --ex: var(--qc); }
 
 svg text { fill: currentColor; font-family: inherit; }
 

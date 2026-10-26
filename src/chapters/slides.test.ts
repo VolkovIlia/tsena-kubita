@@ -10,14 +10,17 @@ import { slides as ch4 } from "./ch4/slides";
 import { slides as ch5 } from "./ch5/slides";
 import { slides as ch6 } from "./ch6/slides";
 import { slides as ch7 } from "./ch7/slides";
+import { slides as ch8 } from "./ch8/slides";
+import { slides as ch9 } from "./ch9/slides";
+import { slides as ch10 } from "./ch10/slides";
 
-const decks: Record<string, Slide[]> = { ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7 };
-const PROLOGUE = ["all", "none", "unknown", "skipped"];
+const decks: Record<string, Slide[]> = { ch0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8, ch9, ch10 };
+const PROLOGUE = ["soon", "never", "unknown", "skipped"];
 
 /** Все тексты слайда, включая подписи кнопок и вариантов ставки. */
 function texts(s: Slide): Text[] {
   const act = s.act.kind === "bet" ? s.act.options.map((o) => o.label) : s.act.label ? [s.act.label] : [];
-  return [s.top, s.say?.text, s.bottom, ...(s.curious ?? []), ...act].filter((t): t is Text => t !== undefined);
+  return [s.top, s.quote?.text, s.bottom, ...(s.curious ?? []), ...act].filter((t): t is Text => t !== undefined);
 }
 
 /** Контексты: каждый вариант каждой ставки и каждый ответ пролога; числа сцены — единица. */

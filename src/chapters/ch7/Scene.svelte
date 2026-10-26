@@ -1,87 +1,211 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+  import params from "../../../data/params.json";
   import type { SceneProps } from "../../deck/types";
+  import { fill, fmtCount, fmtDuration, fmtNum, fmtSci } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import type { ExecutorId } from "../../model/tick";
-  import Peep from "../../ui/Peep.svelte";
-  import { executorIds, type CardId } from "./cards";
-  import Dispatch from "./Dispatch.svelte";
-  import Headlines from "./Headlines.svelte";
-  import Memo from "./Memo.svelte";
-  import Sandbox from "./Sandbox.svelte";
+  import { cycleSeconds, DEFAULT_CHECK, opsPerCycle, physicalPerLogical, scenario, solveSeconds, steps, type ExecutorId } from "../../model/tick";
+  import Board from "../../ui/Board.svelte";
+  import Lanes from "../../ui/Lanes.svelte";
+  import LogSlider from "../../ui/LogSlider.svelte";
+  import { race, reducedMotion } from "../../ui/motion";
+  import { exName } from "../../ui/names";
+  import { slides } from "./slides";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch7.scene;
+  const order = slides.map((s) => s.id);
+  const at = $derived(order.indexOf(slide));
+  const from = (id: string) => at >= order.indexOf(id);
+  const N = scenario.safe_codes;
+  const ALL: ExecutorId[] = ["core", "cores", "gpu", "qc"];
+  const time = Object.fromEntries(ALL.map((id) => [id, solveSeconds(id, N)])) as Record<ExecutorId, number>;
+  /** Сколько тиков квантовый компьютер делает за такт: столько клеток в плитке ширины. */
+  const QC_OPS = Math.round(opsPerCycle("qc"));
 
-  type Phase = keyof typeof t.sign;
-  const PHASE: Record<string, Phase> = {
-    sunday: "intro",
-    dispatch: "dispatch",
-    dispatchDone: "dispatch",
-    headlines: "headlines",
-    memo: "memo",
-    verdict: "end",
-    callback: "end",
-    last: "end",
-    sandbox: "sandbox",
-  };
-  const phase = $derived(PHASE[slide] ?? "intro");
+  /** Решётка одного логического кубита: 2d² шумных, d — нижняя дистанция поверхностного кода. */
+  const QUBITS = physicalPerLogical(params.surface_code.distances[0]);
+  const COLS = 2 * params.surface_code.distances[0];
+  const ROWS = QUBITS / COLS;
+  const CELL = 14;
+  const LX = (640 - COLS * CELL) / 2;
+  const FLICKER_MS = 300;
 
-  let picks = $state<Partial<Record<CardId, ExecutorId>>>({});
-  let memoWrong = $state(false);
-  let best = $state<ExecutorId>("factory");
-  const taken = (who: ExecutorId) => Object.values(picks).filter((p) => p === who).length;
+  /** Панель: сейф, метрономы такта, ширина такта, решётка кубитов, табло. */
+  const panel = $derived(
+    slide === "price"
+      ? "beat"
+      : slide === "width"
+        ? "width"
+        : slide === "qubits" || slide === "ratio"
+          ? "lattice"
+          : slide === "board"
+            ? "board"
+            : "safe",
+  );
+  const sliders = $derived(from("slider"));
 
-  function mood(who: ExecutorId) {
-    if (phase === "sandbox") return best === who ? "happy" : "calm";
-    if (who === "oracle" && (slide === "callback" || slide === "verdict")) return "happy";
-    return "calm";
+  // Гонки на сейфе
+  let clock = $state(0);
+  let started = $state(false);
+  let cancel = () => {};
+  onDestroy(() => cancel());
+
+  function start() {
+    started = true;
+    const tEnd = slide === "race1" ? Math.max(time.core, time.qc) : time.gpu;
+    cancel = race(tEnd, (v) => (clock = v), done);
   }
-  const margoMood = $derived(memoWrong && slide === "memo" ? "shock" : slide === "verdict" ? "happy" : "calm");
 
-  function dispatched(right: number, keyWrong: boolean) {
-    set("right", right);
-    set("keyWrong", keyWrong ? 1 : 0);
-    done();
-  }
+  $effect(() => {
+    const id = slide;
+    cancel();
+    started = false;
+    if (id === "all4") clock = 0;
+  });
+
+  // Ползунки: значения — log10
+  let logN = $state(scenario.slider_log_n_min);
+  let logSpeed = $state(0);
+  let logCheck = $state(Math.log10(DEFAULT_CHECK));
+  const speedMax = Math.log10(scenario.qc_speedup_slider);
+  const checkMin = Math.log10(DEFAULT_CHECK);
+  const checkMax = Math.log10(scenario.check_ticks_realistic);
+  const n = $derived(10 ** logN);
+  const speed = $derived(10 ** logSpeed);
+  const check = $derived(Math.round(10 ** logCheck));
+  const tG = $derived(solveSeconds("gpu", n, check));
+  const tQ = $derived(solveSeconds("qc", n, check, speed));
+
+  $effect(() => set("logN", logN));
+  $effect(() => set("logSpeed", logSpeed));
+  $effect(() => set("logCheck", logCheck));
+  $effect(() => {
+    if ((slide === "slider" && tQ <= tG) || (slide === "speed" && logSpeed >= speedMax)) done();
+    if (slide === "check" && logCheck >= checkMax) done();
+  });
+
+  const lanes = $derived.by(() => {
+    if (sliders)
+      return [
+        { id: "gpu" as const, seconds: tG },
+        { id: "qc" as const, seconds: tQ },
+      ];
+    if (!from("race1") || from("price")) return [];
+    const lane = (id: ExecutorId) => ({ id, seconds: time[id], checks: id === "qc" ? steps("qc", N) : N });
+    return (from("all4") ? ALL : (["core", "qc"] as ExecutorId[])).map(lane);
+  });
+  const laneT = $derived(sliders ? Math.min(tG, tQ) : clock);
+
+  let lit = $state(new Set<number>());
+  $effect(() => {
+    if (panel !== "lattice" || reducedMotion()) return;
+    const id = setInterval(() => {
+      lit = new Set(Array.from({ length: Math.round(QUBITS / 20) }, () => Math.floor(Math.random() * QUBITS)));
+    }, FLICKER_MS);
+    return () => clearInterval(id);
+  });
 </script>
 
 <div class="scene">
-  <svg viewBox="0 0 640 360" role="img" aria-label={t.label}>
-    <text class="sign" x="320" y="48" text-anchor="middle">{t.sign[phase]}</text>
-    <line class="floor" x1="0" y1="300" x2="640" y2="300" />
-    <g class="actor"><Peep who="margo" mood={margoMood} size={120} x={10} y={180} /></g>
-    {#each executorIds as who, i (who)}
-      {@const x = 150 + i * 122}
-      <g class="actor" class:dim={phase === "memo" || phase === "headlines"}>
-        <Peep {who} mood={mood(who)} size={100} {x} y={196} />
-        <text class="name who-{who}" x={x + 50} y="336" text-anchor="middle">{ru.names[who]}</text>
-        {#if phase === "dispatch" && taken(who) > 0}
-          <g class="badge who-{who}">
-            <circle cx={x + 50} cy="168" r="20" />
-            <text class="num" x={x + 50} y="176" text-anchor="middle">{taken(who)}</text>
+  {#if panel === "board"}
+    <Board ids={ALL} rows={["rate", "steps", "time"]} n={N} caption={fill(ru.ch7.board.caption, { n: fmtCount(N) })} />
+  {:else}
+    <svg viewBox="0 0 640 230" role="img" aria-label={t.label}>
+      {#if panel === "safe"}
+        <g class="safe">
+          <rect x="40" y="20" width="190" height="190" rx="14" />
+          <circle cx="135" cy="115" r="48" />
+          <circle cx="135" cy="115" r="8" class="hub" />
+          {#each Array.from({ length: 12 }, (_, i) => i) as i}
+            <line x1="135" y1="71" x2="135" y2="81" transform="rotate({i * 30} 135 115)" />
+          {/each}
+        </g>
+        <text x="260" y="95">{fill(t.codes, { n: sliders ? fmtSci(n) : fmtCount(N) })}</text>
+        <text x="260" y="145" class="muted">{fill(t.check, { m: fmtCount(sliders ? check : DEFAULT_CHECK) })}</text>
+      {:else if panel === "beat"}
+        {#each [["qc", 170, "slow"], ["gpu", 470, "steady"]] as const as [who, x, kind]}
+          <g class="ex-{who}">
+            <circle cx={x} cy="80" r="48" class="lamp {kind}" />
+            <text x={x} y="170" text-anchor="middle" class="name">{exName(who)}</text>
+            <text x={x} y="205" text-anchor="middle" class="muted">{fill(t.beat, { t: fmtDuration(cycleSeconds(who)) })}</text>
           </g>
-        {/if}
-      </g>
-    {/each}
-  </svg>
-  {#if slide === "dispatch" || slide === "dispatchDone"}
-    <Dispatch bind:picks onDone={dispatched} />
-  {:else if slide === "headlines"}
-    <Headlines onDone={done} />
-  {:else if slide === "memo"}
-    <Memo onWrong={(w) => (memoWrong = w)} onDone={done} />
-  {:else if slide === "sandbox"}
-    <Sandbox bind:best />
+        {/each}
+      {:else if panel === "width"}
+        <g class="ex-gpu">
+          <rect x="110" y="20" width="120" height="120" class="tile" />
+          <text x="170" y="175" text-anchor="middle" class="name">{exName("gpu")}</text>
+          <text x="170" y="210" text-anchor="middle" class="muted">{fill(t.perCycle, { n: fmtCount(opsPerCycle("gpu")) })}</text>
+        </g>
+        <g class="ex-qc">
+          {#each Array.from({ length: QC_OPS }, (_, i) => i) as i}
+            <rect x={475 - 15 * QC_OPS + 30 * i} y="70" width="20" height="20" class="tile" />
+          {/each}
+          <text x="470" y="175" text-anchor="middle" class="name">{exName("qc")}</text>
+          <text x="470" y="210" text-anchor="middle" class="muted">{fill(t.perCycle, { n: fmtCount(QC_OPS) })}</text>
+        </g>
+      {:else}
+        <g class="lattice ex-qc">
+          {#each Array.from({ length: QUBITS }, (_, i) => i) as i}
+            <circle cx={LX + (i % COLS) * CELL + CELL / 2} cy={Math.floor(i / COLS) * CELL + CELL / 2} r="4.5" class:lit={lit.has(i)} />
+          {/each}
+        </g>
+        <text x="320" y={ROWS * CELL + 30} text-anchor="middle">{fill(t.lattice, { n: fmtCount(QUBITS) })}</text>
+      {/if}
+    </svg>
+  {/if}
+
+  {#if lanes.length}
+    <div class="lanes"><Lanes {lanes} t={laneT} /></div>
+  {/if}
+  {#if sliders}
+    <p class="num times">{fill(t.times, { gpu: exName("gpu"), qc: exName("qc"), g: fmtDuration(tG), q: fmtDuration(tQ) })}</p>
+    <div class="sliders">
+      <LogSlider
+        label={fill(t.sliderN, { n: fmtSci(n) })}
+        min={scenario.slider_log_n_min}
+        max={scenario.slider_log_n_max}
+        step={0.1}
+        bind:value={logN}
+      />
+      {#if from("speed")}
+        <LogSlider label={fill(t.sliderSpeed, { x: fmtNum(speed) })} min={0} max={speedMax} step={1} bind:value={logSpeed} />
+      {/if}
+      {#if from("check")}
+        <LogSlider label={fill(t.sliderCheck, { m: fmtCount(check) })} min={checkMin} max={checkMax} step={1} bind:value={logCheck} />
+      {/if}
+    </div>
+  {/if}
+  {#if (slide === "race1" || slide === "race2") && !started}
+    <div class="actions"><button class="primary" onclick={start}>{ru.ui.startRace}</button></div>
+  {:else if started}
+    <p class="num clock" aria-live="off">{fill(ru.ui.clock, { t: fmtDuration(clock) })}</p>
   {/if}
 </div>
 
 <style>
   svg { width: 100%; height: auto; display: block; }
-  .sign { font-size: 30px; font-weight: 600; }
-  .floor { stroke: var(--ink); stroke-width: 2; }
-  .name { font-size: 22px; font-weight: 600; fill: var(--who); }
-  .badge circle { fill: var(--who); }
-  .badge text { font-size: 22px; font-weight: 600; fill: var(--paper); }
-  .actor { transition: opacity 300ms; }
-  .actor.dim { opacity: 0.35; }
+  text { font-size: 26px; fill: var(--ink); }
+  text.muted { fill: var(--muted); }
+  text.name { fill: var(--ex); font-weight: 600; }
+  .safe rect { fill: var(--paper); stroke: var(--ink); stroke-width: 4; }
+  .safe circle { fill: none; stroke: var(--ink); stroke-width: 4; }
+  .safe .hub { fill: var(--ink); }
+  .safe line { stroke: var(--ink); stroke-width: 3; }
+  .lamp { fill: var(--ex); }
+  .lamp.slow { animation: blink 1s steps(1) infinite; }
+  .lamp.steady { opacity: 0.85; }
+  @keyframes blink { 50% { opacity: 0.15; } }
+  @media (prefers-reduced-motion: reduce) { .lamp.slow { animation: none; } }
+  .tile { fill: var(--ex); }
+  .lattice circle { fill: var(--ex); opacity: 0.35; transition: opacity 200ms; }
+  .lattice circle.lit { opacity: 1; fill: var(--ink); }
+  .lanes { margin-top: 0.75rem; }
+  .times { font-weight: 600; margin: 0.75rem 0 0; }
+  .clock { color: var(--muted); margin: 0.5rem 0 0; }
+  /* Три ползунка в ряд, чтобы слайд влез в экран ноутбука. */
+  @media (min-width: 700px) {
+    .sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); column-gap: 1.5rem; }
+    .sliders :global(.slider) { margin: 0.5rem 0; }
+  }
 </style>

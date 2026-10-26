@@ -1,9 +1,10 @@
 /** Глава как колода слайдов на одной постоянной сцене (формат The Evolution of Trust). */
 import type { Component } from "svelte";
 import type { RuleId } from "../game/chapters";
-import type { Cite } from "../i18n/ru";
+import type { Cite, Dict } from "../i18n/ru";
 import type { ExecutorId } from "../model/tick";
-import type { Speaker } from "../ui/types";
+
+export type PersonId = keyof Dict["people"];
 
 /** Что знает колода: ответы на ставки (answers.prologue — ответ пролога или "skipped") и числа из сцены. */
 export interface Ctx {
@@ -19,13 +20,11 @@ export interface Slide {
   id: string;
   /** Рассказчик: 1–3 строки над сценой. */
   top?: Text;
-  /** Реплика персонажа под сценой. */
-  say?: { who: Speaker; text: Text; note?: string };
+  /** Дословная цитата реального человека из открытого источника. */
+  quote?: { who: PersonId; text: Text; cite: Cite };
   /** Вопрос или подсказка под сценой; у ставки — её вопрос. */
   bottom?: Text;
   act: Act;
-  /** Показать шкалу веры Марго и сдвинуть её, как после главы. */
-  mood?: true;
   /** Карточка «В блокнот». */
   rule?: RuleId;
   /** Блок «На чём основан расчёт». */

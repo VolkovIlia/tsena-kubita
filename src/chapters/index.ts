@@ -16,6 +16,12 @@ import Scene6 from "./ch6/Scene.svelte";
 import { slides as slides6 } from "./ch6/slides";
 import Scene7 from "./ch7/Scene.svelte";
 import { slides as slides7 } from "./ch7/slides";
+import Scene8 from "./ch8/Scene.svelte";
+import { slides as slides8 } from "./ch8/slides";
+import Scene9 from "./ch9/Scene.svelte";
+import { slides as slides9 } from "./ch9/slides";
+import Scene10 from "./ch10/Scene.svelte";
+import { slides as slides10 } from "./ch10/slides";
 
 export const decks: Record<ChapterId, Deck> = {
   ch0: { slides: slides0, Scene: Scene0 },
@@ -26,4 +32,7 @@ export const decks: Record<ChapterId, Deck> = {
   ch5: { slides: slides5, Scene: Scene5 },
   ch6: { slides: slides6, Scene: Scene6 },
   ch7: { slides: slides7, Scene: Scene7 },
+  ch8: { slides: slides8, Scene: Scene8 },
+  ch9: { slides: slides9, Scene: Scene9 },
+  ch10: { slides: slides10, Scene: Scene10 },
 };

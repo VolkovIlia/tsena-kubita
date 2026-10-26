@@ -1,12 +1,12 @@
 {
-  "_readme": "Единственный источник чисел для игры. Реплики персонажей и гонки берут числа ТОЛЬКО отсюда (через src/model/tick.ts). Любое изменение — с источником, датой и прогоном тестов.",
+  "_readme": "Единственный источник чисел для игры. Тексты и гонки берут числа ТОЛЬКО отсюда (через src/model/tick.ts). Любое изменение — с источником, датой и прогоном тестов.",
   "as_of": "2026-10-25",
   "executors": {
-    "master": {
-      "name_ru": "Мастер (1 ядро CPU)",
+    "core": {
+      "name_ru": "1 ядро CPU",
       "ops_per_s": 1.28e12,
       "algorithm": "classical",
-      "source": "Тик = логическая операция над битом, как у Hoefler et al. 2023 (Table 1, binary). Одно ядро: 4 скалярные 64-битные логические операции за такт (uops.info, AND r64,r64, Zen 4/Zen 5: 0,25 такта), 5 ГГц (AMD EPYC 9575F, max boost). Векторные команды не учтены — подыгрываем Оракулу",
+      "source": "Тик = логическая операция над битом, как у Hoefler et al. 2023 (Table 1, binary). Одно ядро: 4 скалярные 64-битные логические операции за такт (uops.info, AND r64,r64, Zen 4/Zen 5: 0,25 такта), 5 ГГц (AMD EPYC 9575F, max boost). Векторные команды не учтены — подыгрываем квантовому компьютеру",
       "source_url": "https://uops.info/html-instr/AND_21_R64_R64.html",
       "verified": true,
       "derivation": {
@@ -16,8 +16,8 @@
         "clock_hz": 5e9
       }
     },
-    "brigade": {
-      "name_ru": "Бригада (64 ядра CPU)",
+    "cores": {
+      "name_ru": "64 ядра CPU",
       "ops_per_s": 7.3728e13,
       "algorithm": "classical",
       "source": "64 ядра AMD EPYC 9575F на all-core 4,5 ГГц × 4 скалярные 64-битные логические операции за такт (uops.info)",
@@ -30,8 +30,8 @@
         "clock_hz": 4.5e9
       }
     },
-    "factory": {
-      "name_ru": "Фабрика (GPU уровня A100)",
+    "gpu": {
+      "name_ru": "Видеокарта (GPU уровня A100)",
       "ops_per_s": 5e15,
       "algorithm": "classical",
       "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 4 992 Top/s (округлено до 5e15)",
@@ -46,11 +46,18 @@
         "bits_per_op": 32,
         "source": "NVIDIA A100 whitepaper, Table 4: 108 SM × 64 INT32-ядра = 6912, GPU Boost 1410 MHz, Peak INT32 19,5 TOPS (IMAD = 2 операции) = 6912 × 1,41 ГГц × 2 → одна 32-битная операция за такт на поток",
         "source_url": "https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/nvidia-ampere-architecture-whitepaper.pdf",
-        "verified": true
+        "verified": true,
+        "sm": 108,
+        "lanes_per_sm": 64,
+        "lanes": 6912,
+        "warp": 32,
+        "warp_source": "CUDA C++ Programming Guide v12.4, SIMT Architecture: groups of 32 parallel threads called warps; the warp executes each branch path taken, disabling threads that are not on that path",
+        "warp_source_url": "https://docs.nvidia.com/cuda/archive/12.4.0/cuda-c-programming-guide/index.html#simt-architecture",
+        "warp_verified": true
       }
     },
-    "oracle": {
-      "name_ru": "Оракул (будущий КК с исправлением ошибок)",
+    "qc": {
+      "name_ru": "Квантовый компьютер будущего (с исправлением ошибок)",
       "ops_per_s": 235000,
       "algorithm": "grover",
       "source": "Hoefler, Häner, Troyer 2023, Table 1: binary 235 kop/s, логический гейт 10 мкс, оптимистичные допущения",
@@ -62,13 +69,13 @@
     }
   },
   "io_gbit_per_s": {
-    "factory": {
+    "gpu": {
       "value": 10000,
       "source": "Hoefler et al. 2023, Table 1",
       "source_url": "https://arxiv.org/abs/2307.00523",
       "verified": true
     },
-    "oracle": {
+    "qc": {
       "value": 1,
       "source": "Hoefler et al. 2023, Table 1",
       "source_url": "https://arxiv.org/abs/2307.00523",
@@ -78,7 +85,7 @@
   "defaults": {
     "check_ticks": 100,
     "check_ticks_realistic": 1000000,
-    "oracle_speedup_slider": 100,
+    "qc_speedup_slider": 100,
     "safe_codes": 1e16,
     "password_alphabet": 62,
     "pinball_doors": 8,
@@ -105,7 +112,57 @@
     "key_codes": 1e12,
     "sandbox_log_n_min": 3,
     "sandbox_log_n_max": 30,
-    "bytes_per_amplitude": 16
+    "bytes_per_amplitude": 16,
+    "ladder_n": [10, 20, 40, 60, 80, 100],
+    "compare_items": 64,
+    "compare_n_big": 1e12,
+    "night_hours": 8,
+    "mail_password_chars": 9
+  },
+  "adder": {
+    "gates_per_bit": 5,
+    "source": "Kuphaldt. Lessons In Electric Circuits, Vol. IV, ch. 9: полный сумматор — два полусумматора (XOR + AND) и OR, всего 5 вентилей",
+    "source_url": "https://www.ibiblio.org/kuphaldt/electricCircuits/Digital/DIGI_9.html",
+    "verified": true
+  },
+  "universe_age_years": {
+    "value": 1.3787e10,
+    "source": "Planck 2018 results. VI. Cosmological parameters, Table 2, TT,TE,EE+lowE+lensing+BAO: 13,787 ± 0,020 млрд лет",
+    "source_url": "https://arxiv.org/abs/1807.06209",
+    "verified": true
+  },
+  "cryostat": {
+    "kelvin": 0.014,
+    "cmb_kelvin": 2.72548,
+    "source": "Krinner et al. 2019 (~14 мК); Fixsen 2009 (2,72548 K)",
+    "source_url": "https://arxiv.org/abs/1806.07862",
+    "cmb_source_url": "https://arxiv.org/abs/0911.1955",
+    "verified": true
+  },
+  "kerenidis": {
+    "year": 2016,
+    "month": 3,
+    "source": "Kerenidis, Prakash. Quantum Recommendation Systems. arXiv:1603.08675",
+    "source_url": "https://arxiv.org/abs/1603.08675",
+    "verified": true
+  },
+  "timeline": {
+    "shannon": {"year": 1938, "month": 12, "source": "Shannon. A Symbolic Analysis of Relay and Switching Circuits. Trans. AIEE 57(12):713–723 (1938). Выходные данные по CrossRef; текст статьи не сверен (сканы без текста)", "source_url": "https://doi.org/10.1109/T-AIEE.1938.5057767", "verified": true},
+    "feynman": {"year": 1982, "month": 6, "source": "Feynman. Simulating Physics with Computers. Int. J. Theor. Phys. 21, 467–488 (1982)", "source_url": "https://doi.org/10.1007/BF02650179", "verified": true},
+    "shor": { "year": 1994, "source": "Shor. FOCS 1994", "source_url": "https://arxiv.org/abs/quant-ph/9508027", "verified": true },
+    "grover": { "year": 1996, "source": "Grover. STOC 1996", "source_url": "https://arxiv.org/abs/quant-ph/9605043", "verified": true },
+    "amdahl": { "year": 1967, "source": "Amdahl. AFIPS '67", "source_url": "https://doi.org/10.1145/1465482.1465560", "verified": true },
+    "sutter": {"year": 2005, "month": 3, "source": "Sutter. The Free Lunch Is Over. Dr. Dobb's Journal 30(3), March 2005", "source_url": "http://www.gotw.ca/publications/concurrency-ddj.htm", "verified": true},
+    "cuda": {"year": 2007, "month": 6, "source": "NVIDIA CUDA Toolkit Archive: CUDA Toolkit 1.0 (June 2007)", "source_url": "https://developer.nvidia.com/cuda-toolkit-archive", "verified": true},
+    "ibmCloud": {"year": 2016, "month": 5, "qubits": 5, "source": "IBM, пресс-релиз 04.05.2016: IBM Makes Quantum Computing Available on IBM Cloud (копия Wayback Machine)", "source_url": "https://web.archive.org/web/20161222051931/http://www-03.ibm.com/press/us/en/pressrelease/49661.wss", "verified": true},
+    "reiher": { "year": 2017, "source": "Reiher et al. PNAS 114 (2017)", "source_url": "https://arxiv.org/abs/1605.03590", "verified": true },
+    "tang": {"year": 2018, "month": 7, "source": "Tang. A quantum-inspired classical algorithm for recommendation systems. arXiv:1807.04271 (10.07.2018)", "source_url": "https://arxiv.org/abs/1807.04271", "verified": true},
+    "sycamore": {"year": 2019, "month": 10, "qubits": 53, "quantum_seconds": 200, "claimed_classical_years": 10000, "ibm_days": 2.5, "source": "Arute et al. Nature 574, 505–510 (2019), аннотация; IBM Quantum blog «On “quantum supremacy”» (22.10.2019): оценка 2,5 дня, расчёт не выполнялся", "source_url": "https://www.nature.com/articles/s41586-019-1666-5", "ibm_source_url": "https://www.ibm.com/quantum/blog/on-quantum-supremacy", "verified": true},
+    "willow": {"year": 2024, "month": 12, "qubits": 105, "source": "Google blog, Meet Willow (09.12.2024); Nature 638, 920–926: Quantum error correction below the surface code threshold", "source_url": "https://blog.google/technology/research/google-willow-quantum-chip/", "nature_url": "https://www.nature.com/articles/s41586-024-08449-y", "verified": true},
+    "echoes": { "year": 2025, "source": "Google Quantum AI blog, 22.10.2025", "source_url": "https://research.google/blog/a-verifiable-quantum-advantage/", "verified": true },
+    "majorana2": {"name": "Majorana 2", "year": 2026, "month": 6, "reliability_claim": 1000, "target_year": 2029, "source": "Microsoft Source, Introducing Majorana 2 (02.06.2026): время жизни кубита в 1 000 раз дольше прошлого поколения; масштабируемый квантовый компьютер — к 2029 году. Препринт без рецензии; контрапункт — Science News", "source_url": "https://news.microsoft.com/source/features/innovation/majorana-2-microsoft-discovery-agentic-ai/", "critique_url": "https://www.sciencenews.org/article/microsoft-quantum-chip-upgrade-majorana", "verified": true},
+    "hoefler": { "year": 2023, "source": "Hoefler, Häner, Troyer. CACM 66(5), 2023", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true },
+    "starling": { "year": 2029, "logical_qubits": 200, "gates": 1e8, "source": "IBM Quantum blog: Starling", "source_url": "https://www.ibm.com/quantum/blog/large-scale-ftqc", "verified": true }
   },
   "rsa2048": {
     "digits": 617,

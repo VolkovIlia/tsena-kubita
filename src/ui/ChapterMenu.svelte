@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { chapters, type ChapterId, type RuleId } from "../game/chapters";
+  import { chapters, eventYear, type ChapterId, type RuleId } from "../game/chapters";
   import { hashOf } from "../game/hash";
   import { game } from "../game/store.svelte";
   import { ru } from "../i18n/ru";
 
   let { current }: { current: ChapterId | null } = $props();
   let dialog: HTMLDialogElement;
-  const all: RuleId[] = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const all = chapters.map((c) => c.rule).filter((r): r is RuleId => r !== null);
 </script>
 
 <button onclick={() => dialog.showModal()}>{ru.ui.menu}</button>
@@ -16,7 +16,7 @@
     {#each chapters as c (c.id)}
       <li>
         <a href={hashOf(c.id)} aria-current={current === c.id ? "page" : undefined} onclick={() => dialog.close()}>
-          {ru.daysFull[c.day]} — {ru.chapters[c.id]}</a
+          <span class="num">{eventYear(c.event)}</span> · {ru.chapters[c.id]}</a
         >{#if game.p.done.includes(c.id)}<span class="passed">, {ru.ui.passed}</span>{/if}
       </li>
     {/each}

@@ -1,132 +1,178 @@
-import params from "../../../data/params.json";
-import type { Slide } from "../../deck/types";
-import { fill, fmtCount, fmtDuration } from "../../i18n/format";
+import type { Ctx, Slide } from "../../deck/types";
+import { eventYear } from "../../game/chapters";
+import { fill, fmtCount, fmtPercent, fmtTimes } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
-import { DAY, memoryPlace, scenario, shorFactors, stateVectorSize } from "../../model/tick";
+import { groverOptimal, groverSuccess, handSteps, hands, qcFavour, scenario, stepCrossover, type ExecutorId } from "../../model/tick";
+import { exName } from "../../ui/names";
 
 const t = ru.ch6;
-const A = scenario.shor_a;
-const N = scenario.shor_n;
-const shor = shorFactors(A, N);
-const { rsa250, rsa2048 } = params;
+const DOORS = scenario.pinball_doors;
+export const OPTIMAL = groverOptimal(DOORS);
+export const REPEATS = [1, 2, 3, 4];
+export const ALL: ExecutorId[] = ["core", "cores", "gpu", "qc"];
+export const ITEMS = scenario.compare_items;
+export const BIG = scenario.pinball_big_n;
 
-function place(n: number): string {
-  const { id, fits } = memoryPlace(n);
-  const s = t.scales[id];
-  return fill(fits ? t.board.fits : t.board.over, { prep: s.prep, name: s.in });
+/** Кому нужно меньше всего шагов подряд среди n вариантов. */
+export function fewest(n: number): ExecutorId {
+  return ALL.reduce((a, b) => (handSteps(b, n) < handSteps(a, n) ? b : a));
+}
+// Тексты fewestDone называют победителя по имени: если модель изменится, текст должен измениться вместе с ней.
+if (fewest(BIG) !== "gpu") throw new Error("ch6: меньше всего шагов среди pinball_big_n больше не у видеокарты — перепиши fewestDone");
+
+/** Цепочка шансов после 0…k пар «Метка → Отражение». */
+export function chain(k: number): string {
+  return Array.from({ length: k + 1 }, (_, j) => fmtPercent(groverSuccess(DOORS, j))).join(" → ");
+}
+
+const prev = { prev: ru.chapters.ch5 };
+const chosen = (c: Ctx) => Number(c.answers.repeats ?? OPTIMAL);
+const pct = (c: Ctx, key: string) => fmtPercent(c.scene[key] ?? 0);
+const steps = (id: ExecutorId, n: number) => fmtCount(handSteps(id, n));
+
+function verdictKey(c: Ctx): keyof typeof t.verdict.reply {
+  const k = chosen(c);
+  return k < OPTIMAL ? "under" : k > OPTIMAL ? "over" : "right";
+}
+
+function fewestReply(c: Ctx): string {
+  const pick = (c.answers.fewest ?? "qc") as ExecutorId;
+  const values = { best: steps("gpu", BIG), qc: steps("qc", BIG), name: exName(pick), mine: steps(pick, BIG) };
+  const key = pick === fewest(BIG) ? "right" : pick === "qc" ? "qc" : "other";
+  return fill(t.fewestDone.reply[key], values);
 }
 
 export const slides: Slide[] = [
-  { id: "nina", top: () => t.nina.top, say: { who: "nina", text: () => t.nina.say }, act: { kind: "next" } },
-  { id: "enzyme", say: { who: "nina", text: () => t.enzyme.say }, act: { kind: "next" } },
+  {
+    id: "doors",
+    top: () => fill(t.doors.top, { doors: fmtCount(DOORS) }),
+    bottom: () => fill(t.doors.bottom, { ...prev, p: fmtPercent(groverSuccess(DOORS, 0)) }),
+    act: { kind: "next" },
+  },
+  {
+    id: "idea",
+    top: () => fill(t.idea.top, { year: String(eventYear("grover")) }),
+    cites: ["grover"],
+    act: { kind: "next", label: () => t.idea.label },
+  },
+  { id: "bars", top: () => fill(t.bars.top, { ...prev, p: fmtPercent(groverSuccess(DOORS, 0)) }), act: { kind: "next" } },
+  { id: "mark", top: () => t.mark.top, act: { kind: "scene" } },
+  {
+    id: "markDone",
+    top: (c) => fill(t.markDone.top, { p: pct(c, "p") }),
+    act: { kind: "next", label: () => t.markDone.label },
+  },
+  { id: "reflect", top: () => t.reflect.top, act: { kind: "scene" } },
+  {
+    id: "reflectDone",
+    top: (c) => fill(t.reflectDone.top, { before: pct(c, "p0"), after: pct(c, "p1") }),
+    act: { kind: "next", label: () => t.reflectDone.label },
+  },
+  {
+    id: "waves",
+    top: () => fill(t.waves.top, prev),
+    quote: { who: "grover", text: () => t.waves.quote, cite: "grover" },
+    act: { kind: "next", label: () => t.waves.label },
+  },
   {
     id: "bet",
-    top: () => t.bet.top,
+    top: () => fill(t.bet.top, { p: fmtPercent(groverSuccess(DOORS, 1)) }),
     bottom: () => t.bet.bottom,
     act: {
       kind: "bet",
-      id: "memory",
-      options: (["factory", "oracle"] as const).map((id) => ({ id, label: () => ru.names[id] })),
-      correct: () => "oracle",
+      id: "repeats",
+      options: REPEATS.map((k) => ({ id: String(k), label: () => fmtCount(k) })),
+      correct: () => String(OPTIMAL),
     },
   },
+  { id: "play", top: (c) => fill(t.play.top, { k: fmtCount(chosen(c)) }), act: { kind: "scene" } },
   {
-    id: "board",
-    top: (c) => fill(t.board.top, { reply: t.board.reply[c.answers.memory as keyof typeof t.board.reply] ?? "" }).trim(),
-    bottom: (c) => {
-      const n = c.scene.n ?? scenario.memory_n[0];
-      return fill(t.board.bottom, { n: String(n), count: fmtCount(stateVectorSize(n)), place: place(n) });
-    },
-    act: { kind: "scene" },
-    curious: [() => fill(t.board.curious, { b: String(scenario.bytes_per_amplitude) })],
-    cites: ["apple", "llnl", "idc"],
-  },
-  { id: "wall", top: () => t.wall.top, say: { who: "factory", text: () => t.wall.say }, act: { kind: "next" } },
-  {
-    id: "honest",
-    top: () => t.honest.top,
-    say: { who: "master", text: () => t.honest.say, note: t.honest.note },
-    act: { kind: "next" },
-    curious: [() => t.honest.curious],
-    cites: ["reiher", "lee"],
-  },
-  {
-    id: "become",
-    top: () => t.become.top,
-    say: { who: "oracle", text: () => t.become.say },
-    cites: ["reiher"],
-    act: { kind: "next" },
-  },
-  { id: "thanks", top: () => t.thanks.top, say: { who: "nina", text: () => t.thanks.say }, act: { kind: "next" } },
-  { id: "bank", top: () => t.bank.top, act: { kind: "next" } },
-  {
-    id: "fifteen",
-    top: () => fill(t.fifteen.top, { n: String(N) }),
-    say: { who: "master", text: () => fill(t.fifteen.say, { p: String(shor.p), q: String(shor.q) }) },
+    id: "verdict",
+    top: (c) => fill(t.verdict.top, { reply: t.verdict.reply[verdictKey(c)], chain: chain(chosen(c)) }),
     act: { kind: "next" },
   },
   {
-    id: "rhythm",
-    say: { who: "oracle", text: () => t.rhythm.say },
-    bottom: () => fill(t.rhythm.bottom, { a: String(A), n: String(N) }),
+    id: "optimum",
+    top: () =>
+      fill(t.optimum.top, {
+        k: fmtCount(OPTIMAL),
+        pk: fmtPercent(groverSuccess(DOORS, OPTIMAL)),
+        next: fmtPercent(groverSuccess(DOORS, OPTIMAL + 1)),
+      }),
+    act: { kind: "scene", label: () => t.optimum.label },
+  },
+  {
+    id: "million",
+    top: () => fill(t.million.top, { n: fmtCount(BIG), k: fmtCount(groverOptimal(BIG)) }),
+    bottom: () => t.million.bottom,
+    act: { kind: "next" },
+  },
+  {
+    id: "grover",
+    top: () => t.grover.top,
+    curious: [() => t.grover.footnote1, () => fill(t.grover.footnote2, { x: fmtTimes(qcFavour()) })],
+    cites: ["grover", "bbbv", "threeBlue"],
+    act: { kind: "next", label: () => t.grover.label },
+  },
+  {
+    id: "compare",
+    top: () => fill(t.compare.top, { items: fmtCount(ITEMS) }),
+    bottom: () => t.compare.bottom,
     act: { kind: "scene" },
   },
   {
-    id: "period",
-    top: () => fill(t.period.top, { r: String(shor.r) }),
-    say: { who: "oracle", text: () => t.period.say },
-    act: { kind: "next" },
-    curious: [
-      () =>
-        fill(t.period.curious, {
-          a: String(A),
-          half: String(shor.half),
-          square: String(shor.square),
-          sm: String(shor.square - 1),
-          sp: String(shor.square + 1),
-          p: String(shor.p),
-          q: String(shor.q),
-        }),
-    ],
-    cites: ["shor"],
-  },
-  {
-    id: "rsa1",
-    top: () =>
-      fill(t.rsa1.top, {
-        digits: String(rsa2048.digits),
-        rd: String(rsa250.digits),
-        ry: String(rsa250.year),
-        cy: fmtCount(rsa250.core_years),
+    id: "howSteps",
+    top: () => t.howSteps.top,
+    bottom: () =>
+      fill(t.howSteps.bottom, {
+        core: exName("core"),
+        cores: exName("cores"),
+        a: steps("core", ITEMS),
+        b: steps("cores", ITEMS),
+        c: steps("gpu", ITEMS),
       }),
     act: { kind: "next" },
-    cites: ["rsa250"],
   },
   {
-    id: "rsa2",
-    top: () =>
-      fill(t.rsa2.top, {
-        gy: String(rsa2048.year),
-        days: fmtDuration(rsa2048.runtime_days_max * DAY),
-        qubits: fmtCount(rsa2048.physical_qubits_max),
-      }),
+    id: "howQc",
+    top: () => fill(t.howQc.top, { items: fmtCount(ITEMS), qc: steps("qc", ITEMS) }),
+    bottom: () => t.howQc.bottom,
     act: { kind: "next" },
-    cites: ["gidney"],
   },
   {
-    id: "calm",
-    top: () => t.calm.top,
-    say: { who: "oracle", text: () => t.calm.say },
-    act: { kind: "next" },
-    cites: ["nist"],
+    id: "fewestBet",
+    top: () => fill(t.fewestBet.top, { n: fmtCount(BIG) }),
+    bottom: () => t.fewestBet.bottom,
+    act: {
+      kind: "bet",
+      id: "fewest",
+      options: ALL.map((id) => ({ id, label: () => exName(id) })),
+      correct: () => fewest(BIG),
+    },
   },
-  { id: "razbor", top: () => t.razbor.top, say: { who: "master", text: () => t.razbor.say }, act: { kind: "next" } },
+  {
+    id: "fewestDone",
+    top: fewestReply,
+    bottom: () => fill(t.fewestDone.bottom, { lanes: fmtCount(hands("gpu")) }),
+    act: { kind: "next" },
+  },
+  {
+    id: "stepSlider",
+    top: () => t.stepSlider.top,
+    bottom: () => t.stepSlider.bottom,
+    curious: [() => fill(t.stepSlider.curious, { n: fmtCount(stepCrossover("gpu")) })],
+    act: { kind: "scene" },
+  },
+  {
+    id: "bridge",
+    top: () => t.bridge.top,
+    bottom: () => fill(t.bridge.bottom, { next: ru.chapters.ch7 }),
+    act: { kind: "next" },
+  },
   {
     id: "rule",
     top: () => t.rule.top,
-    say: { who: "margo", text: () => t.rule.say },
     rule: "r6",
-    mood: true,
-    act: { kind: "next", label: () => t.rule.label },
+    act: { kind: "next", label: () => fill(ru.ui.nextChapter, { name: ru.chapters.ch7 }) },
   },
 ];
