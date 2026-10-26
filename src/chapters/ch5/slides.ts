@@ -51,8 +51,8 @@ export const slides: Slide[] = [
           ? fill(t.arrow.tuned.top, { ...BIT, po: fmtPercent(c.scene.po ?? 0) })
           : fill(t.arrow.start.top, { tick: ru.chapters.ch1 }),
     bottom: (c) => (c.scene.measured ? t.arrow.done.bottom : c.scene.tuned ? t.arrow.tuned.bottom : fill(t.arrow.start.bottom, BIT)),
-    curious: [() => t.arrow.curious],
-    cites: ["quillen", "qcvc"],
+    curious: [() => t.arrow.curious, () => t.arrow.curious2],
+    cites: ["quillen", "qcvc", "arute"],
     act: { kind: "scene" },
   },
   {
