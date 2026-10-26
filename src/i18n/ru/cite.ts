@@ -122,6 +122,10 @@ export const cite = {
   fixsen: { text: "Fixsen. The temperature of the cosmic microwave background, 2009", url: "https://arxiv.org/abs/0911.1955" },
   preskill: { text: "Preskill. Quantum Computing in the NISQ era and beyond. Quantum 2, 79 (2018)", url: "https://arxiv.org/abs/1801.00862" },
   montanaro: { text: "Montanaro. Quantum algorithms: an overview. npj Quantum Information 2, 15023 (2016)", url: "https://arxiv.org/abs/1511.04206" },
+  quillen: {
+    text: "Quillen. PHY265 Lecture notes: Quantum Systems, Measurement and the Qubit. University of Rochester, 2026",
+    url: "https://astro.pas.rochester.edu/~aquillen/phy265/lectures/QI_A.pdf",
+  },
   qcvc: { text: "Matuschak, Nielsen. Quantum computing for the very curious. Quantum Country, 2019", url: "https://quantum.country/qcvc" },
   cudaGuide9: {
     text: "NVIDIA. CUDA C Programming Guide v9.0, Introduction",

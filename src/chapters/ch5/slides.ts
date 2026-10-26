@@ -13,9 +13,11 @@ export const DOORS = scenario.pinball_doors;
 export const QUBITS = Math.log2(DOORS);
 /** Ряд растёт до стольких амплитуд, сколько ячеек в сравнении «Квантового алгоритма». */
 export const MAX_QUBITS = Math.log2(scenario.compare_items);
-/** Сколько раз игрок измеряет смешанный кубит и открывает дверь. */
+/** Сколько фотонов игрок пускает через фильтр и сколько дверей открывает. */
 export const MEASURES = 10;
 export const LOOKS = 3;
+/** Цель настройки стрелки: фильтр «1» пропускает фотон в трёх случаях из четырёх (выбор сцены, ±5 п. п.). */
+export const TARGET = { p: 0.75, tolerance: 0.05 };
 /** Смешанный кубит: Адамар на нуле. */
 export const MIXED = hadamard(basis(1), 0);
 /** Подписи двух исходов кубита: значения бита, а не числа модели. */
@@ -44,17 +46,13 @@ export const slides: Slide[] = [
     id: "arrow",
     top: (c) =>
       c.scene.measured
-        ? fill(t.arrow.done.top, {
-            ...BIT,
-            zeros: String(c.scene.zeros ?? 0),
-            ones: String(c.scene.ones ?? 0),
-            pz: fmtPercent(c.scene.pz ?? 0),
-            po: fmtPercent(c.scene.po ?? 0),
-          })
-        : fill(t.arrow.top, BIT),
-    bottom: (c) => (c.scene.measured ? t.arrow.done.bottom : t.arrow.bottom),
+        ? fill(t.arrow.done.top, { ones: String(c.scene.ones ?? 0), n: String(MEASURES), po: fmtPercent(c.scene.po ?? 0) })
+        : c.scene.tuned
+          ? fill(t.arrow.tuned.top, { ...BIT, po: fmtPercent(c.scene.po ?? 0) })
+          : fill(t.arrow.start.top, { tick: ru.chapters.ch1 }),
+    bottom: (c) => (c.scene.measured ? t.arrow.done.bottom : c.scene.tuned ? t.arrow.tuned.bottom : fill(t.arrow.start.bottom, BIT)),
     curious: [() => t.arrow.curious],
-    cites: ["qcvc"],
+    cites: ["quillen", "qcvc"],
     act: { kind: "scene" },
   },
   {

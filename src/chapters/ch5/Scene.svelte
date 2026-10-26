@@ -10,7 +10,7 @@
   import { exName } from "../../ui/names";
   import Arrow from "./Arrow.svelte";
   import Bars from "./Bars.svelte";
-  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, WILLOW } from "./slides";
+  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, WILLOW } from "./slides";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch5.scene;
@@ -50,10 +50,18 @@
   let snapTimer: ReturnType<typeof setTimeout> | undefined;
   let cancelTurn = () => {};
 
+  let tuned = $state(false);
   $effect(() => {
-    if (slide !== "arrow") return;
+    if (slide !== "arrow" || tuned) return;
     const r = (deg * Math.PI) / 180;
     amps = [Math.cos(r), Math.sin(r)];
+    const p1 = probabilities(amps)[1];
+    if (Math.abs(p1 - TARGET.p) > TARGET.tolerance) return;
+    untrack(() => {
+      tuned = true;
+      set("tuned", 1);
+      set("po", p1);
+    });
   });
 
   /** Вентиль H: стрелка отражается от зеркала, поворачиваясь к новому положению. */
@@ -149,7 +157,10 @@
       cancelTurn();
       snap = null;
       outcomes = [];
-      if (s === "arrow") deg = 0;
+      if (s === "arrow") {
+        deg = 0;
+        tuned = false;
+      }
       else if (s === "gate") {
         amps = basis(1);
         gated = false;
@@ -178,17 +189,20 @@
   <Frame>
     <svg viewBox="0 0 640 360" role="img" aria-label={label}>
       {#if panel === "arrow"}
-        <Arrow a0={shown[0]} a1={shown[1]} cx={150} cy={190} r={110} labels={[BIT.zero, BIT.one]} {mirror} />
-        <Bars amps={shown} x={300} y={250} w={150} scale={130} labels={BITS} />
-        <text x="375" y="320" text-anchor="middle" class="muted num">
-          {fill(t.chance, { pz: fmtPercent(probabilities(shown)[0]), po: fmtPercent(probabilities(shown)[1]) })}
-        </text>
+        <Arrow a0={shown[0]} a1={shown[1]} cx={170} cy={175} r={115} labels={[BIT.zero, BIT.one]} {mirror} />
+        <text x="170" y="345" text-anchor="middle" class="muted num">{fill(t.chance, { po: fmtPercent(probabilities(shown)[1]) })}</text>
+        <!-- фильтр «1»: пропускает фотон с шансом квадрата тени на ось «1», за ним лампа-детектор -->
+        <g class="filter">
+          <rect x="395" y="85" width="44" height="180" rx="4" />
+          {#each Array.from({ length: 9 }, (_, i) => i) as i}<line x1="401" y1={103 + i * 18} x2="433" y2={103 + i * 18} />{/each}
+        </g>
+        <text x="417" y="295" text-anchor="middle" class="muted">{fill(t.filter, BIT)}</text>
         {#key outcomes.length}
-          <circle class="lamp flash" class:on={last === 1} cx="560" cy="150" r="52" />
+          <circle class="lamp flash" class:on={last === 1} cx="555" cy="175" r="52" />
         {/key}
-        <text x="560" y="160" text-anchor="middle" class="name">{last === null ? "?" : BITS[last]}</text>
-        <text x="560" y="245" text-anchor="middle" class="name">{t.bit}</text>
-        <text x="560" y="280" text-anchor="middle" class="muted">{t.result}</text>
+        <text x="555" y="185" text-anchor="middle" class="name">{last === null ? "?" : BITS[last]}</text>
+        <text x="555" y="265" text-anchor="middle" class="name">{t.bit}</text>
+        <text x="555" y="295" text-anchor="middle" class="muted">{t.result}</text>
       {:else if panel === "paths"}
         {#each paths as p, k}
           {@const gx = 20 + k * 320}
@@ -236,8 +250,8 @@
 
   {#if slide === "arrow"}
     <div class="controls">
-      <label class="turn">{t.turn}<input type="range" min="0" max="360" step="5" bind:value={deg} disabled={snap !== null} /></label>
-      <button class="primary" onclick={measureOnce} disabled={outcomes.length >= MEASURES}>{t.measure}</button>
+      <label class="turn">{t.turn}<input type="range" min="0" max="90" step="1" bind:value={deg} disabled={tuned} /></label>
+      <button class="primary" onclick={measureOnce} disabled={!tuned || outcomes.length >= MEASURES}>{t.measure}</button>
     </div>
   {:else if (slide === "gate" && !gated) || (slide === "interference" && !interfered)}
     <div class="actions">
@@ -271,6 +285,8 @@
   text.sign { font-size: 40px; }
   .lamp { fill: var(--paper); stroke: var(--ink); stroke-width: 4; transition: fill 200ms; }
   .lamp.on { fill: var(--core); }
+  .filter rect { fill: none; stroke: var(--ink); stroke-width: 3; }
+  .filter line { stroke: var(--muted); stroke-width: 2; }
   .flash { animation: flash 300ms ease-out; }
   @keyframes flash { from { opacity: 0.3; } to { opacity: 1; } }
   .door { fill: none; stroke: var(--muted); stroke-width: 2; }
