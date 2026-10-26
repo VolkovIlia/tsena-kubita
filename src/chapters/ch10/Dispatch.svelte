@@ -5,7 +5,7 @@
   import { ru } from "../../i18n/ru";
   import { scenario, type ExecutorId } from "../../model/tick";
   import { exName } from "../../ui/names";
-  import { cards, executorIds, isRight, ruleChapter, type CardId } from "./cards";
+  import { cards, executorIds, ruleChapter, type CardId } from "./cards";
 
   let {
     picks = $bindable(),
@@ -22,9 +22,9 @@
   function pick(id: CardId, who: ExecutorId) {
     picks[id] = who;
     open = null;
-    update((p) => recordBet(p, { chapter: "ch10", id: `card-${id}`, correct: isRight(cards.find((c) => c.id === id)!, who) }));
+    update((p) => recordBet(p, { chapter: "ch10", id: `card-${id}`, correct: who === best[id] }));
     if (!cards.every((c) => picks[c.id])) return;
-    const right = cards.filter((c) => isRight(c, picks[c.id]!)).length;
+    const right = cards.filter((c) => picks[c.id] === best[c.id]).length;
     onDone(right, picks.key !== best.key);
   }
 </script>
@@ -49,7 +49,7 @@
           <span>{title(card.id)}</span>
           {#if !revealed}
             <span class="verdict">{fill(t.dispatchUi.chosen, { name: exName(chosen) })}</span>
-          {:else if isRight(card, chosen)}
+          {:else if chosen === best[card.id]}
             <span class="verdict ok ex-{chosen}">
               {fill(t.dispatchUi.right, { name: exName(chosen), rule: ruleRef(card) })}
             </span>

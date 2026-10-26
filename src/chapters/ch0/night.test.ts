@@ -9,8 +9,8 @@ describe("ночь диспетчера: время заказов", () => {
   it("рекламное видео: 1 ядро 2,6 мин, 64 ядра 2,7 с, видеокарта 40 мс, квантовый 27 лет", () => {
     expect(MACHINES.map((id) => fmtDuration(orderSeconds("video", id)!))).toEqual(["2,6 мин", "2,7 с", "40 мс", "27 лет"]);
   });
-  it("банк, миллион платежей по одному счёту: 78 мкс / 78 мкс / 2,2 мс / 7,1 мин", () => {
-    expect(MACHINES.map((id) => fmtDuration(orderSeconds("bank", id)!))).toEqual(["78 мкс", "78 мкс", "2,2 мс", "7,1 мин"]);
+  it("банк, миллион платежей по одному счёту: 78 мкс / 87 мкс / 2,2 мс / 7,1 мин", () => {
+    expect(MACHINES.map((id) => fmtDuration(orderSeconds("bank", id)!))).toEqual(["78 мкс", "87 мкс", "2,2 мс", "7,1 мин"]);
   });
   it("архив, пароль из 12 цифр: 1,3 мин / 1,4 с / 20 мс / 7,1 мин", () => {
     expect(MACHINES.map((id) => fmtDuration(orderSeconds("archive", id)!))).toEqual(["1,3 мин", "1,4 с", "20 мс", "7,1 мин"]);
@@ -36,10 +36,10 @@ describe("ночь диспетчера: исход", () => {
     expect(verdict("mail", "cores")).toBe("done");
     expect(verdict("fertilizer", "gpu")).toBe("fail");
   });
-  it("простые стратегии: «всё видеокарте» — 3 лучших, «всё квантовому», «всё одному ядру» и «всё 64 ядрам» — по 1", () => {
+  it("простые стратегии: «всё видеокарте» — 3 лучших, «всё квантовому» — 1, «всё одному ядру» — 1, «всё 64 ядрам» — 0", () => {
     const [core, cores, gpu, qc] = MACHINES.map((id) => score(always(id)));
-    expect([core.best, cores.best, gpu.best, qc.best]).toEqual([1, 1, 3, 1]);
-    expect(verdict("bank", "cores")).toBe("best");
+    expect([core.best, cores.best, gpu.best, qc.best]).toEqual([1, 0, 3, 1]);
+    expect(verdict("bank", "cores")).toBe("done");
     expect(emojiGrid(gpu)).toBe("🟩🟨🟩🟩🟥");
     expect(emojiGrid(qc)).toBe("🟥🟨🟨🟥🟩");
   });

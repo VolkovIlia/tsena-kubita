@@ -80,9 +80,9 @@ describe("гл. 2: мультфильм и цепочка платежей", () 
     expect(solveSeconds("cores", pixels, scenario.pixel_ticks)).toBeCloseTo(2.713, 2);
     expect(solveSeconds("core", pixels, scenario.pixel_ticks) / 60).toBeCloseTo(2.6, 1);
   });
-  it("цепочка: 1 ядро и 64 ядра — по 78 мкс (занятое ядро разгоняется), видеокарта 2,2 мс", () => {
+  it("цепочка: 1 ядро 78 мкс, 64 ядра 87 мкс, видеокарта 2,2 мс", () => {
     expect(chain("core")).toBeCloseTo(7.81e-5, 7);
-    expect(chain("cores")).toBe(chain("core"));
+    expect(chain("cores")).toBeCloseTo(8.68e-5, 7);
     expect(chain("gpu")).toBeCloseTo(2.216e-3, 5);
   });
   it("сюжет: толпа выигрывает мультфильм, одиночка — цепочку, ядро из 64 ≈ одному ядру", () => {
@@ -559,7 +559,7 @@ describe("гл. «Много ядер», «Видеокарта», «Кубит�
     expect(sp(fmtB.fmtCount(scenario.pixel_ticks))).toBe("100 000");
     expect(fmtB.fmtCount(scenario.payments)).toBe("1 миллион");
   });
-  it("Много ядер: 2005; 64 ядра, «в 64 раза», «почти в 58 раз»; 5 и 4,5 ГГц; 2,6 мин / 2,7 с; 78 / 78 мкс; мостик — 6 912 ядер", () => {
+  it("Много ядер: 2005; 64 ядра, «в 64 раза», «почти в 58 раз»; 5 и 4,5 ГГц; 2,6 мин / 2,7 с; 78 / 87 мкс; мостик — 6 912 ядер", () => {
     expect(chaptersB.eventYear("sutter")).toBe(2005);
     expect(String(hands("cores"))).toBe("64");
     expect(fmtTimes(hands("cores"))).toBe("64 раза");
@@ -567,8 +567,8 @@ describe("гл. «Много ядер», «Видеокарта», «Кубит�
     expect(fmtNum(executors.core.derivation.clock_hz / 1e9)).toBe("5");
     expect(fmtNum(executors.cores.derivation.clock_hz / 1e9)).toBe("4,5");
     expect(crew.map((id) => fmtDuration(cartoon(id)))).toEqual(["2,6 мин", "2,7 с", "40 мс"]);
-    expect(crew.map((id) => fmtDuration(chain(id)))).toEqual(["78 мкс", "78 мкс", "2,2 мс"]);
-    expect(chain("core")).toBe(chain("cores"));
+    expect(crew.map((id) => fmtDuration(chain(id)))).toEqual(["78 мкс", "87 мкс", "2,2 мс"]);
+    expect(chain("core")).toBeLessThan(chain("cores"));
     expect(sp(fmtB.fmtCount(hands("gpu")))).toBe("6 912");
   });
   it("Много ядер, Амдал: 1967; при 10% неделимого 64 ядра — 8,6 раза, миллион рук — не больше 10 раз; ползунок до 50%", () => {

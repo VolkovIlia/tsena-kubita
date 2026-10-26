@@ -142,16 +142,15 @@ export function halvingSteps(n: number): number {
 }
 
 /**
- * Тиков в секунду у одного работающего ядра, когда остальные простаивают (цепочка).
- * Процессор: одно занятое ядро разгоняется до максимальной частоты — у 64 ядер столько же, сколько
- * у одиночного (паспорт AMD: max boost 5 ГГц, all-core 4,5 ГГц). Видеокарта: одно ядро на своей частоте.
+ * Тиков в секунду у одного ядра исполнителя: у 64 ядер — на их частоте (4,5 ГГц, all-core по паспорту AMD),
+ * у одиночного — 5 ГГц, у видеокарты — одно её ядро.
  */
 export function laneRate(id: Classical): number {
   if (id === "gpu") {
     const l = executors.gpu.lane;
     return l.clock_hz * l.ops_per_cycle * l.bits_per_op;
   }
-  const d = executors.core.derivation;
+  const d = executors[id].derivation;
   return d.ops_per_cycle * d.bits_per_op * d.clock_hz;
 }
 

@@ -103,20 +103,11 @@ export const slides: Slide[] = [
     id: "chainBet",
     top: () => fill(t.chainBet.top, { payments: fmtCount(scenario.payments) }),
     bottom: () => t.chainBet.bottom,
-    act: {
-      kind: "bet",
-      id: "gpuChain",
-      options: [
-        { id: "cpu", label: () => fill(t.chainBet.cpu, { one: exName("core"), many: exName("cores") }) },
-        { id: "gpu", label: () => exName("gpu") },
-      ],
-      /** Одно ядро и 64 ядра на цепочке идут вровень, поэтому ставка — «процессор или видеокарта». */
-      correct: () => (Math.min(chain.core, chain.cores) <= chain.gpu ? "cpu" : "gpu"),
-    },
+    act: { kind: "bet", id: "gpuChain", options: crew, correct: () => bestExecutor(chain) },
   },
   {
     id: "chainRace",
-    top: (c) => t.chainRace.reply[c.answers.gpuChain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.cpu,
+    top: (c) => t.chainRace.reply[c.answers.gpuChain as Classical] ?? t.chainRace.reply.core,
     bottom: () => t.chainRace.bottom,
     act: { kind: "scene" },
   },

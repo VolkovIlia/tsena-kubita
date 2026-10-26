@@ -69,10 +69,10 @@ export const slides: Slide[] = [
       id: "chain",
       options: [
         { id: "x64", label: () => fill(t.chainBet.x64, { x: xn }) },
-        { id: "some", label: () => t.chainBet.some },
         { id: "same", label: () => t.chainBet.same },
+        { id: "slower", label: () => t.chainBet.slower },
       ],
-      correct: () => (chain.cores >= chain.core ? "same" : chain.core / chain.cores > 32 ? "x64" : "some"),
+      correct: () => (chain.cores > chain.core ? "slower" : chain.cores === chain.core ? "same" : "x64"),
     },
   },
   {
@@ -80,8 +80,9 @@ export const slides: Slide[] = [
     top: (c) =>
       c.scene.chain
         ? fill(t.chainRace.done.top, { one, many, tOne: fmtDuration(chain.core), tMany: fmtDuration(chain.cores), n })
-        : (t.chainRace.reply[c.answers.chain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.same),
-    bottom: (c) => (c.scene.chain ? fill(t.chainRace.done.bottom, { ...ghz, rest: String(hands("cores") - 1) }) : t.chainRace.bottom),
+        : (t.chainRace.reply[c.answers.chain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.slower),
+    bottom: (c) => (c.scene.chain ? fill(t.chainRace.done.bottom, ghz) : t.chainRace.bottom),
+    curious: [() => fill(t.chainRace.curious, { many })],
     cites: ["amd"],
     act: { kind: "scene" },
   },
