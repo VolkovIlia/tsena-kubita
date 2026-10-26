@@ -1,1 +1,9 @@
-entities: []
+entities:
+  - id: core
+    name: "1 ядро"
+  - id: cores
+    name: "64 ядра"
+  - id: gpu
+    name: "Видеокарта"
+  - id: qc
+    name: "Квантовый компьютер"

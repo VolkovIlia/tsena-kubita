@@ -5,20 +5,21 @@ project:
 
 story:
   genre: "научно-популярная интерактивная история"
-  subgenre: "explorable explanation в формате The Evolution of Trust"
+  subgenre: "explorable explanation в формате The Evolution of Trust; хроника реальных событий"
   language: "ru"
   audience: "16+, без специальной подготовки; студенты, журналисты, лица, принимающие решения"
-  estimated_length: "28–32 минуты: пролог, 6 глав, финал"
+  estimated_length: "45–50 минут: пролог, 9 глав, финал"
   premise_status: "approved"
 
 narrative:
   tone: "умный приятель: сухой юмор, точность, без восторгов и страшилок"
-  voice: "реплики персонажей + короткие плашки «разбор»"
-  pov: "второе лицо, игрок — диспетчер бюро («ты»)"
+  voice: "рассказчик + дословные цитаты реальных людей"
+  pov: "второе лицо, игрок — читатель хроники"
   tense: "настоящее"
 
 workflow:
   canonical_root: "story"
   initialized_at: "2026-10-25"
+  rewritten_at: "2026-10-26"
   next_skill: "chapter-review"
   numbers_source: "../data/params.json через ../src/model/tick.ts"

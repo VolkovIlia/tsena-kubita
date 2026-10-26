@@ -1,6 +1,16 @@
 threads:
   - id: prologue_answer_callback
     opened_in: chapter_00
-    resolved_in: chapter_07
-    note: "3 варианта написаны в chapter_07.md, экран 6"
-    status: resolved
+    resolved_in: chapter_10
+    note: "4 варианта (soon / never / unknown / skipped) — слайд callback финала"
+    status: open
+  - id: desk_question
+    opened_in: chapter_00
+    resolved_in: chapter_10
+    note: "ответ «будет ли на столе» в три слайда desk"
+    status: open
+  - id: exp_row_return
+    opened_in: chapter_02
+    resolved_in: chapter_09
+    note: "строка «все комбинации» на лестнице сложности → доска памяти"
+    status: open

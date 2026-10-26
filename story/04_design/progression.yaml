@@ -1,90 +1,90 @@
 # Прогрессия: правила-знания как ключи. IDs/keys на английском, значения — на русском.
 obstacles:
-  - id: g_route_trap
+  - id: g_prologue_answer
     type: world_state
-    description: "Ловушка «ждать квантовый ради маршрута»: Мастер прокладывает путь волной Дейкстры"
-    requires: [halving_done]
+    description: "Ответ на вопрос пролога «скоро на столе?» (soon / never / unknown); правильного нет"
+    requires: []
+    grants: [prologue_done]
+    critical_path: true
+    fallback_route: "вопрос можно пропустить (skipped)"
+    status: designed
+  - id: r_tick
+    type: knowledge
+    description: "Скорость компьютера — тики в секунду, цена задачи — сколько тиков ей нужно"
+    requires: [prologue_done]
     grants: [rule_1]
     critical_path: true
-    fallback_route: "неверная ставка не блокирует: волну Мастера показывают в любом случае"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
-  - id: r_structure
+  - id: r_algorithm
     type: knowledge
-    description: "Хитрость бьёт силу: сначала ищи структуру задачи"
-    requires: [chapter_01_done]
-    grants: [rule_1]
-    critical_path: true
-    fallback_route: "выдаётся при разборе даже при неверной ставке"
-    status: designed
-  - id: r_parallel
-    type: knowledge
-    description: "Делить можно не всякую работу"
-    requires: [chapter_02_done]
+    description: "Хороший алгоритм экономит больше, чем быстрое железо"
+    requires: [rule_1]
     grants: [rule_2]
     critical_path: true
-    fallback_route: "выдаётся при разборе"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
-  - id: g_oracle_arrives
-    type: world_state
-    description: "Оракул приезжает в бюро"
-    requires: [rule_1, rule_2]
-    grants: [executor_oracle]
-    critical_path: true
-    fallback_route: "вход по ссылке — карточка «что ты уже знаешь»"
-    status: designed
-  - id: r_interference
+  - id: r_cores
     type: knowledge
-    description: "Оракул не читает все ответы — он гасит неверные волнами"
-    requires: [pinball_done]
+    description: "Много ядер ускоряют, только если работу можно поделить"
+    requires: [rule_2]
     grants: [rule_3]
     critical_path: true
-    fallback_route: "после ставки проигрывается выбранное число повторов, затем оптимум"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
-  - id: g_factory_race
-    type: world_state
-    description: "Гонка Оракула с Фабрикой"
+  - id: r_gpu
+    type: knowledge
+    description: "Видеокарта — очень много слабых ядер: сильна на одинаковой работе, бессильна на цепочке"
     requires: [rule_3]
-    grants: [hype_drop]
+    grants: [rule_4]
     critical_path: true
-    fallback_route: null
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
+    status: designed
+  - id: r_qubit
+    type: knowledge
+    description: "Кубит не выдаёт все ответы: измерение даёт один случайный, работают волны амплитуд"
+    requires: [rule_4]
+    grants: [rule_5]
+    critical_path: true
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
+    status: designed
+  - id: r_grover
+    type: knowledge
+    description: "Квантовый поиск делает меньше шагов — около корня из N"
+    requires: [rule_5]
+    grants: [rule_6]
+    critical_path: true
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
   - id: r_tick_price
     type: knowledge
-    description: "Шаг Оракула очень дорог: корень из N окупается нескоро"
-    requires: [chapter_04_done]
-    grants: [rule_4]
+    description: "Шаг квантового компьютера очень дорог: корень из N окупается нескоро"
+    requires: [rule_6]
+    grants: [rule_7]
     critical_path: true
-    fallback_route: "выдаётся при разборе"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
   - id: r_bottleneck
     type: knowledge
-    description: "Данные льются в Оракула через соломинку"
-    requires: [chapter_05_done]
-    grants: [rule_5]
+    description: "Большие данные в квантовый компьютер не пролезают"
+    requires: [rule_7]
+    grants: [rule_8]
     critical_path: true
-    fallback_route: "выдаётся при разборе"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
-  - id: g_nina
-    type: relationship
-    description: "Приходит Нина"
-    requires: [rule_4, rule_5]
-    grants: [chapter_06_orders]
-    critical_path: true
-    fallback_route: null
-    status: designed
-  - id: r_exponential
+  - id: r_own_field
     type: knowledge
-    description: "Оракул незаменим, где задача сама квантовая или прячет ритм"
-    requires: [chapter_06_done]
-    grants: [rule_6]
+    description: "Квантовый компьютер незаменим, где задача сама квантовая или прячет ритм"
+    requires: [rule_8]
+    grants: [rule_9]
     critical_path: true
-    fallback_route: "выдаётся при разборе"
+    fallback_route: "выдаётся при разборе даже при неверной ставке; вход по ссылке — карточка «что ты уже знаешь»"
     status: designed
   - id: g_memo
     type: world_state
-    description: "Служебная записка Марго"
-    requires: [rule_1, rule_2, rule_3, rule_4, rule_5, rule_6]
+    description: "Записка из трёх условий и ответ на вопрос пролога"
+    requires: [rule_1, rule_2, rule_3, rule_4, rule_5, rule_6, rule_7, rule_8, rule_9]
     grants: [finale_scene]
     critical_path: true
-    fallback_route: "правила видны в записке как подсказки; неверную записку можно исправить"
+    fallback_route: "на лишнее условие — подсказка рассказчика со ссылкой на главу по названию; записку можно исправить"
     status: designed

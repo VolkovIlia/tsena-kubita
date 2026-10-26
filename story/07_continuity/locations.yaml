@@ -1,3 +1,2 @@
 locations:
-  - bureau_hall
-  - cryostat_room
+  - timeline   # лента событий пролога и финала
