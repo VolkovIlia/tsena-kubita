@@ -25,6 +25,22 @@ export function hadamard(a: Amps, q: number): Amps {
   return out;
 }
 
+/** Поворот кубита q на угол theta: пары (i, i|2^q) → (x·cos − y·sin, x·sin + y·cos). Стрелка «0»→«1» поворачивается к «1». */
+export function rotate(a: Amps, q: number, theta: number): Amps {
+  const out = a.slice();
+  const bit = 1 << q;
+  const c = Math.cos(theta);
+  const s = Math.sin(theta);
+  for (let i = 0; i < a.length; i++) {
+    if (i & bit) continue;
+    const x = a[i];
+    const y = a[i | bit];
+    out[i] = x * c - y * s;
+    out[i | bit] = x * s + y * c;
+  }
+  return out;
+}
+
 export function hadamardAll(a: Amps): Amps {
   let out = a;
   for (let q = 0; 1 << q < a.length; q++) out = hadamard(out, q);

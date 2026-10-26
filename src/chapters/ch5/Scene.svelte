@@ -3,14 +3,14 @@
   import type { SceneProps } from "../../deck/types";
   import { fill, fmtCount, fmtPercent } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import { basis, hadamard, measure, probabilities, uniform, type Amps } from "../../model/statevector";
+  import { basis, measure, probabilities, rotate, uniform, type Amps } from "../../model/statevector";
   import ExecutorIcon from "../../ui/ExecutorIcon.svelte";
   import Frame from "../../ui/Frame.svelte";
   import { animate, reducedMotion } from "../../ui/motion";
   import { exName } from "../../ui/names";
   import Arrow from "./Arrow.svelte";
   import Bars from "./Bars.svelte";
-  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, WILLOW } from "./slides";
+  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, TURN, TURN_DEG, WILLOW } from "./slides";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch5.scene;
@@ -35,7 +35,6 @@
   const TURN_MS = 700;
   let interfered = $state(false);
   const panel = $derived(slide === "interference" && interfered ? "paths" : (PANELS[slide] ?? "icon"));
-  const mirror = $derived(slide !== "arrow");
 
   // Кубит-стрелка: угол от «0» к «1»; амплитуды — тени стрелки на оси
   let deg = $state(0);
@@ -45,6 +44,10 @@
   let turning = $state(false);
   let gated = $state(false);
   const last = $derived(outcomes.length ? outcomes[outcomes.length - 1] : null);
+  /** Куда вентиль поставит стрелку: пунктир-подсказка на слайдах с поворотом. */
+  const ghost = $derived<[number, number] | null>(
+    (slide === "gate" && !gated) || (slide === "interference" && amps[1] < 0.99) ? (rotate(amps, 0, TURN) as [number, number]) : null,
+  );
   /** На миг после измерения стрелка ложится на выпавшую ось. */
   const shown = $derived(snap === null ? amps : basis(1, snap));
   let snapTimer: ReturnType<typeof setTimeout> | undefined;
@@ -64,11 +67,11 @@
     });
   });
 
-  /** Вентиль H: стрелка отражается от зеркала, поворачиваясь к новому положению. */
-  function applyH() {
+  /** Вентиль-поворот: стрелка плавно поворачивается на TURN. */
+  function applyTurn() {
     const from = Math.atan2(amps[1], amps[0]);
-    const target = hadamard(amps, 0);
-    const to = Math.atan2(target[1], target[0]);
+    const target = rotate(amps, 0, TURN);
+    const to = from + TURN;
     turning = true;
     cancelTurn = animate(
       TURN_MS,
@@ -108,8 +111,8 @@
 
   /** Второе смешивание: вклады каждого исхода из «0» и «1» до сложения. */
   const paths = [0, 1].map((k) => ({
-    parts: [0, 1].map((j) => MIXED[j] * hadamard(basis(1, j), 0)[k]),
-    total: hadamard(MIXED, 0)[k],
+    parts: [0, 1].map((j) => MIXED[j] * rotate(basis(1, j), 0, TURN)[k]),
+    total: rotate(MIXED, 0, TURN)[k],
   }));
 
   // Двери: равная смесь QUBITS кубитов
@@ -189,7 +192,7 @@
   <Frame>
     <svg viewBox="0 0 640 360" role="img" aria-label={label}>
       {#if panel === "arrow"}
-        <Arrow a0={shown[0]} a1={shown[1]} cx={170} cy={175} r={115} labels={[BIT.zero, BIT.one]} {mirror} />
+        <Arrow a0={shown[0]} a1={shown[1]} cx={170} cy={175} r={115} labels={[BIT.zero, BIT.one]} {ghost} />
         <text x="170" y="345" text-anchor="middle" class="muted num">{fill(t.chance, { po: fmtPercent(probabilities(shown)[1]) })}</text>
         <!-- фильтр «1»: пропускает фотон с шансом квадрата тени на ось «1», за ним лампа-детектор -->
         <g class="filter">
@@ -255,9 +258,11 @@
     </div>
   {:else if (slide === "gate" && !gated) || (slide === "interference" && !interfered)}
     <div class="actions">
-      <button class:primary={slide === "gate" || amps[0] < 0.99} onclick={applyH} disabled={turning || (slide === "interference" && amps[0] > 0.99)}>{t.applyH}</button>
+      <button class:primary={slide === "gate" || amps[1] < 0.99} onclick={applyTurn} disabled={turning || (slide === "interference" && amps[1] > 0.99)}>
+        {fill(t.turnBy, { deg: TURN_DEG })}
+      </button>
       {#if slide === "interference"}
-        <button class:primary={amps[0] > 0.99} onclick={measureOnce} disabled={turning || amps[0] < 0.99}>{t.measure}</button>
+        <button class:primary={amps[1] > 0.99} onclick={measureOnce} disabled={turning || amps[1] < 0.99}>{t.measure}</button>
       {/if}
     </div>
   {:else if slide === "lottery"}

@@ -3,7 +3,7 @@ import type { Slide } from "../../deck/types";
 import { eventYear } from "../../game/chapters";
 import { fill, fmtCount, fmtPercent } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
-import { basis, hadamard, probabilities } from "../../model/statevector";
+import { basis, probabilities, rotate } from "../../model/statevector";
 import { memoryScales, physicalPerLogical, scenario, stateVectorSize } from "../../model/tick";
 
 const t = ru.ch5;
@@ -18,8 +18,10 @@ export const MEASURES = 10;
 export const LOOKS = 3;
 /** Цель настройки стрелки: фильтр «1» пропускает фотон в трёх случаях из четырёх (выбор сцены, ±5 п. п.). */
 export const TARGET = { p: 0.75, tolerance: 0.05 };
-/** Смешанный кубит: Адамар на нуле. */
-export const MIXED = hadamard(basis(1), 0);
+/** Вентиль главы — поворот на четверть прямого угла; из «0» он даёт равную смесь. */
+export const TURN = Math.PI / 4;
+export const TURN_DEG = String((TURN * 180) / Math.PI);
+export const MIXED = rotate(basis(1), 0, TURN);
 /** Подписи двух исходов кубита: значения бита, а не числа модели. */
 export const BIT = { zero: "«0»", one: "«1»" };
 
@@ -58,20 +60,20 @@ export const slides: Slide[] = [
   {
     id: "gate",
     top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : fill(t.gate.top, { tick: ru.chapters.ch1 })),
-    bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, BIT)),
-    curious: [() => fill(t.gate.curious, BIT)],
+    bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, { ...BIT, deg: TURN_DEG })),
+    curious: [() => t.gate.curious],
     cites: ["qcvc"],
     act: { kind: "scene" },
   },
   {
     id: "twiceBet",
-    top: () => t.twiceBet.top,
+    top: () => fill(t.twiceBet.top, { deg: TURN_DEG }),
     bottom: () => t.twiceBet.bottom,
     act: {
       kind: "bet",
       id: "twice",
       options: (["half", "zero", "one"] as const).map((id) => ({ id, label: () => fill(t.twiceBet[id], BIT) })),
-      correct: () => "zero",
+      correct: () => (probabilities(rotate(MIXED, 0, TURN))[1] > 0.99 ? "one" : "half"),
     },
   },
   {
@@ -86,7 +88,7 @@ export const slides: Slide[] = [
   },
   {
     id: "lotteryBet",
-    top: () => fill(t.lotteryBet.top, { q: String(QUBITS), doors: String(DOORS) }),
+    top: () => fill(t.lotteryBet.top, { q: String(QUBITS), doors: String(DOORS), deg: TURN_DEG }),
     bottom: () => t.lotteryBet.bottom,
     act: {
       kind: "bet",

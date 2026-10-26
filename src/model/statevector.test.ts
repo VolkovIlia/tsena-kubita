@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basis, mark, mean, measure, probabilities, reflect, uniform, type Amps } from "./statevector";
+import { basis, hadamard, mark, mean, measure, probabilities, reflect, rotate, uniform, type Amps } from "./statevector";
 import { groverSuccess } from "./tick";
 
 const close = (a: Amps, b: Amps) => a.forEach((x, i) => expect(x).toBeCloseTo(b[i], 12));
@@ -31,5 +31,17 @@ describe("симулятор пинбола, 3 кубита", () => {
     expect(measure(basis(3, 5), () => 0)).toBe(5);
     expect(measure(uniform(3), () => 0)).toBe(0);
     expect(measure(uniform(3), () => 0.999999)).toBe(7);
+  });
+});
+
+describe("поворот кубита (глава «Кубит»)", () => {
+  it("поворот «0» на четверть прямого угла даёт ту же смесь, что Адамар: шансы пополам", () => {
+    close(rotate(basis(1), 0, Math.PI / 4), hadamard(basis(1), 0));
+  });
+  it("второй такой поворот приводит точно в «1»: пути в «0» гасят друг друга", () => {
+    close(rotate(rotate(basis(1), 0, Math.PI / 4), 0, Math.PI / 4), basis(1, 1));
+  });
+  it("поворот не меняет длину стрелки", () => {
+    expect(norm(rotate([0.6, 0.8], 0, 1.234))).toBeCloseTo(1, 12);
   });
 });
