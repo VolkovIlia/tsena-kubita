@@ -50,6 +50,8 @@
   let tuned = $state(false);
   let measured = $state(false);
   let gated = $state(false);
+  /** Сколько повернули вентилями на слайде интерференции: от него строятся два пути. */
+  let turned = $state(0);
   const last = $derived(outcomes.length ? outcomes[outcomes.length - 1] : null);
   const filterOpen = $derived(slide === "arrow" && measured);
   const pass = $derived(filterPass(amps, fdeg * RAD));
@@ -95,7 +97,10 @@
       () => {
         amps = target;
         turning = false;
-        if (slide !== "gate" || gated || Math.abs(filterPass(amps, FILTER_ONE * RAD) - TARGET.half) > 0.01) return;
+        if (slide === "interference") turned += theta;
+        if (slide !== "gate") return;
+        set("pg", filterPass(amps, FILTER_ONE * RAD));
+        if (gated || Math.abs(filterPass(amps, FILTER_ONE * RAD) - TARGET.half) > 0.01) return;
         gated = true;
         set("gated", 1);
         done();
@@ -128,11 +133,13 @@
   }
   onDestroy(() => (clearTimeout(snapTimer), cancelTurn()));
 
-  /** Второе смешивание: вклады каждого исхода из «0» и «1» до сложения. */
-  const paths = [0, 1].map((k) => ({
-    parts: [0, 1].map((j) => MIXED[j] * rotate(basis(1, j), 0, TURN)[k]),
-    total: rotate(MIXED, 0, TURN)[k],
-  }));
+  /** Вклады каждого исхода из «0» и «1» после всех поворотов слайда; повороты складываются, поэтому картина точна на любом пути. */
+  const paths = $derived(
+    [0, 1].map((k) => ({
+      parts: [0, 1].map((j) => MIXED[j] * rotate(basis(1, j), 0, turned)[k]),
+      total: rotate(MIXED, 0, turned)[k],
+    })),
+  );
 
   // Двери: равная смесь QUBITS кубитов
   const DOOR_AMPS = uniform(QUBITS);
@@ -191,6 +198,7 @@
       } else if (s === "twiceBet" || s === "interference") {
         amps = MIXED;
         gdeg = Math.round(TURN / RAD);
+        turned = 0;
         interfered = false;
       } else if (s === "lotteryBet" || s === "lottery") looks = [];
       else if (s === "twoN") q = QUBITS;
@@ -239,12 +247,12 @@
         {#each paths as p, k}
           {@const gx = 20 + k * 320}
           <text x={gx + 140} y="36" text-anchor="middle" class="name">{fill(t.outcome, { k: BITS[k] })}</text>
-          <Bars amps={p.parts} x={gx} y={200} w={150} scale={130} />
-          <text x={gx + 168} y="190" text-anchor="middle" class="sign">=</text>
-          <Bars amps={[p.total]} x={gx + 180} y={200} w={110} scale={130} />
-          <text x={gx + 37} y="300" text-anchor="middle" class="muted">{fill(t.fromZero, BIT)}</text>
-          <text x={gx + 112} y="300" text-anchor="middle" class="muted">{fill(t.fromOne, BIT)}</text>
-          <text x={gx + 235} y="300" text-anchor="middle" class="muted">{t.total}</text>
+          <Bars amps={p.parts} x={gx} y={190} w={150} scale={110} />
+          <text x={gx + 168} y="180" text-anchor="middle" class="sign">=</text>
+          <Bars amps={[p.total]} x={gx + 180} y={190} w={110} scale={110} />
+          <text x={gx + 37} y="340" text-anchor="middle" class="muted">{fill(t.fromZero, BIT)}</text>
+          <text x={gx + 112} y="340" text-anchor="middle" class="muted">{fill(t.fromOne, BIT)}</text>
+          <text x={gx + 235} y="340" text-anchor="middle" class="muted">{t.total}</text>
         {/each}
       {:else if panel === "doors"}
         {#each DOOR_AMPS as _, i}

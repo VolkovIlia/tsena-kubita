@@ -32,7 +32,6 @@ export const WILLOW = params.timeline.willow.qubits;
 const LAPTOP = memoryScales.find((s) => s.id === "laptop")!.capacity_numbers;
 const BIG = scenario.memory_n.find((n) => stateVectorSize(n) > LAPTOP)!;
 
-const p = fmtPercent(probabilities(MIXED)[0]);
 type Twice = keyof typeof t.interference.reply;
 type See = keyof typeof t.lottery.reply;
 
@@ -68,7 +67,12 @@ export const slides: Slide[] = [
   },
   {
     id: "gate",
-    top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : fill(t.gate.top, { tick: ru.chapters.ch1 })),
+    top: (c) => {
+      if (!c.scene.gated) return fill(t.gate.top, { tick: ru.chapters.ch1 });
+      const pg = c.scene.pg ?? TARGET.half;
+      if (pg < 0.01 || pg > 0.99) return fill(t.gate.done.axis, { bit: pg > 0.5 ? BIT.one : BIT.zero });
+      return fill(t.gate.done.top, { ...BIT, p: fmtPercent(pg) });
+    },
     bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, BIT)),
     curious: [() => t.gate.curious],
     cites: ["qcvc", "arute"],
