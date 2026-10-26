@@ -59,7 +59,7 @@ export const slides: Slide[] = [
   },
   {
     id: "gate",
-    top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : t.gate.top),
+    top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : fill(t.gate.top, { tick: ru.chapters.ch1 })),
     bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, BIT)),
     curious: [() => fill(t.gate.curious, BIT)],
     cites: ["qcvc"],
