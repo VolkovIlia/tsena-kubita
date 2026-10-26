@@ -26,6 +26,7 @@ export const slides: Slide[] = [
     id: "howCores",
     top: () => fill(t.howCores.top, { many, n }),
     bottom: () => fill(t.howCores.bottom, { n, ...ghz }),
+    curious: [() => fill(t.howCores.curious, ghz)],
     cites: ["sutter", "amd"],
     act: { kind: "next" },
   },
