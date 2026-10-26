@@ -18,43 +18,43 @@
 
   /** Панель сцены по слайду: каждая — одна картинка в рамке 16:9. */
   const PANELS: Record<string, string> = {
-    bitQubit: "bit",
-    bitHow: "bit",
-    h1: "qubit",
-    h1Done: "qubit",
-    h1Link: "qubit",
-    twiceBet: "qubit",
-    interference: "qubit",
-    interferenceHow: "paths",
-    interferenceLink: "qubit",
+    qubit: "measure",
+    twiceBet: "measure",
+    interference: "measure",
     lotteryBet: "doors",
     lottery: "doors",
-    lotteryDone: "doors",
     twoN: "grow",
-    twoNDone: "grow",
     noisy: "lattice",
-    logical: "lattice",
     today: "lattice",
   };
-  const panel = $derived(PANELS[slide] ?? "icon");
+  /** Сколько раз измерить после второго смешивания, чтобы увидеть «всегда ноль». */
+  const INTERFERE_MEASURES = 3;
+  let interfered = $state(false);
+  const panel = $derived(slide === "interference" && interfered ? "paths" : (PANELS[slide] ?? "icon"));
 
-  // Бит и кубит
-  let lamp = $state(false);
+  // Кубит и лампа: лампа — бит, который выдало последнее измерение
   let amps = $state<Amps>(basis(1));
   let mixed = $state(false);
   let outcomes = $state<number[]>([]);
+  const last = $derived(outcomes.length ? outcomes[outcomes.length - 1] : null);
 
   function mix() {
     amps = hadamard(amps, 0);
     mixed = true;
+    if (slide === "qubit") set("mixed", 1);
   }
 
   function measureOnce() {
     outcomes = [...outcomes, measure(amps, Math.random)];
-    if (slide === "interference") return done();
-    if (slide !== "h1" || outcomes.length < MEASURES) return;
+    if (slide === "interference" && outcomes.length >= INTERFERE_MEASURES) {
+      interfered = true;
+      set("interfered", 1);
+      return done();
+    }
+    if (slide !== "qubit" || outcomes.length < MEASURES) return;
     set("zeros", outcomes.filter((b) => b === 0).length);
     set("ones", outcomes.filter((b) => b === 1).length);
+    set("measured", 1);
     done();
   }
 
@@ -73,14 +73,18 @@
     const door = measure(DOOR_AMPS, Math.random);
     set(`look${looks.length}`, door);
     looks = [...looks, door];
-    if (looks.length >= LOOKS) done();
+    if (looks.length < LOOKS) return;
+    set("looked", 1);
+    done();
   }
 
   // Рост ряда: 2ⁿ амплитуд
   let q = $state(QUBITS);
   function addQubit() {
     q += 1;
-    if (q >= MAX_QUBITS) done();
+    if (q < MAX_QUBITS) return;
+    set("grown", 1);
+    done();
   }
 
   // Решётка одного надёжного кубита: 2d² шумных, ряды по 2d
@@ -102,23 +106,23 @@
   $effect(() => {
     const s = slide;
     untrack(() => {
-      if (s === "h1") {
+      if (s === "qubit") {
         amps = basis(1);
         mixed = false;
         outcomes = [];
       } else if (s === "twiceBet" || s === "interference") {
         amps = MIXED;
         mixed = false;
+        interfered = false;
         outcomes = [];
-      } else if (s === "interferenceLink") amps = hadamard(MIXED, 0);
-      else if (s === "lotteryBet" || s === "lottery") looks = [];
+      } else if (s === "lotteryBet" || s === "lottery") looks = [];
       else if (s === "twoN") q = QUBITS;
     });
   });
 
   const label = $derived(
-    panel === "qubit" || panel === "bit"
-      ? fill(t.amps, { list: probabilities(panel === "bit" ? basis(1) : amps).map(fmtPercent).join(", ") })
+    panel === "measure"
+      ? fill(t.amps, { list: probabilities(amps).map(fmtPercent).join(", ") })
       : panel === "doors"
         ? fill(t.amps, { list: probabilities(DOOR_AMPS).map(fmtPercent).join(", ") })
         : panel === "grow"
@@ -132,14 +136,16 @@
 <div class="scene">
   <Frame>
     <svg viewBox="0 0 640 360" role="img" aria-label={label}>
-      {#if panel === "bit"}
-        <circle class="lamp" class:on={lamp} cx="170" cy="150" r="70" />
-        <text x="170" y="275" text-anchor="middle" class="name">{t.bit}</text>
-        <text x="170" y="310" text-anchor="middle" class="muted">{lamp ? t.lampOn : t.lampOff}</text>
-        <Bars amps={basis(1)} x={380} y={235} w={220} scale={170} labels={BITS} />
-        <text x="490" y="310" text-anchor="middle" class="name">{t.qubit}</text>
-      {:else if panel === "qubit"}
-        <Bars {amps} x={170} y={280} w={300} scale={240} labels={BITS} />
+      {#if panel === "measure"}
+        <Bars {amps} x={60} y={250} w={260} scale={200} labels={BITS} />
+        <text x="190" y="320" text-anchor="middle" class="name">{t.qubit}</text>
+        <text x="380" y="170" text-anchor="middle" class="sign">→</text>
+        {#key outcomes.length}
+          <circle class="lamp flash" class:on={last === 1} cx="520" cy="150" r="64" />
+        {/key}
+        <text x="520" y="162" text-anchor="middle" class="name">{last === null ? "?" : BITS[last]}</text>
+        <text x="520" y="285" text-anchor="middle" class="name">{t.bit}</text>
+        <text x="520" y="320" text-anchor="middle" class="muted">{t.result}</text>
       {:else if panel === "paths"}
         {#each paths as p, k}
           {@const gx = 20 + k * 320}
@@ -175,11 +181,9 @@
             />
           {/each}
         </g>
-        {#if slide !== "noisy"}
-          <text x="320" y={14 + ROWS * CELL + 40} text-anchor="middle">
-            {#if slide === "today"}{fill(t.willow, { n: fmtCount(WILLOW) })} · {/if}{fill(t.lattice, { n: fmtCount(LATTICE) })}
-          </text>
-        {/if}
+        <text x="320" y={14 + ROWS * CELL + 40} text-anchor="middle">
+          {#if slide === "today"}{fill(t.willow, { n: fmtCount(WILLOW) })} · {/if}{fill(t.lattice, { n: fmtCount(LATTICE) })}
+        </text>
       {:else}
         <ExecutorIcon ex="qc" size={200} x={220} y={40} />
         <text x="320" y="300" text-anchor="middle" class="name ex-qc">{exName("qc")}</text>
@@ -187,12 +191,10 @@
     </svg>
   </Frame>
 
-  {#if panel === "bit"}
-    <div class="actions"><button aria-pressed={lamp} onclick={() => (lamp = !lamp)}>{t.toggle}</button></div>
-  {:else if slide === "h1" || slide === "interference"}
+  {#if (slide === "qubit" || slide === "interference") && !interfered}
     <div class="actions">
-      <button onclick={mix} disabled={mixed}>{t.mix}</button>
-      <button onclick={measureOnce} disabled={!mixed || (slide === "h1" && outcomes.length >= MEASURES)}>{t.measure}</button>
+      <button class:primary={!mixed} onclick={mix} disabled={mixed}>{t.mix}</button>
+      <button class:primary={mixed} onclick={measureOnce} disabled={!mixed || (slide === "qubit" && outcomes.length >= MEASURES)}>{t.measure}</button>
     </div>
   {:else if slide === "lottery"}
     <div class="actions"><button onclick={look} disabled={looks.length >= LOOKS}>{t.look}</button></div>
@@ -200,9 +202,9 @@
     <div class="actions"><button onclick={addQubit} disabled={q >= MAX_QUBITS}>{t.addQubit}</button></div>
   {/if}
 
-  {#if panel === "qubit" && outcomes.length}
+  {#if panel === "measure" && outcomes.length}
     <p class="num status" aria-live="polite">
-      {#if slide === "h1"}{fill(t.measured, { n: String(outcomes.length), max: String(MEASURES) })} · {/if}
+      {#if slide === "qubit"}{fill(t.measured, { n: String(outcomes.length), max: String(MEASURES) })} · {/if}
       {fill(t.outcomes, { list: outcomes.map(String).join(" ") })}
     </p>
   {:else if panel === "doors" && opened !== null}
@@ -219,6 +221,8 @@
   text.sign { font-size: 40px; }
   .lamp { fill: var(--paper); stroke: var(--ink); stroke-width: 4; transition: fill 200ms; }
   .lamp.on { fill: var(--core); }
+  .flash { animation: flash 300ms ease-out; }
+  @keyframes flash { from { opacity: 0.3; } to { opacity: 1; } }
   .door { fill: none; stroke: var(--muted); stroke-width: 2; }
   .door.open { fill: color-mix(in srgb, var(--qc) 25%, transparent); stroke: var(--ink); stroke-width: 3; }
   .lattice circle { fill: var(--ex); opacity: 0.85; transition: opacity 200ms; }

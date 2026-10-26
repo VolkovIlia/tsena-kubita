@@ -28,33 +28,29 @@ export const WILLOW = params.timeline.willow.qubits;
 const LAPTOP = memoryScales.find((s) => s.id === "laptop")!.capacity_numbers;
 const BIG = scenario.memory_n.find((n) => stateVectorSize(n) > LAPTOP)!;
 
+const p = fmtPercent(probabilities(MIXED)[0]);
+type Twice = keyof typeof t.interference.reply;
+type See = keyof typeof t.lottery.reply;
+
 export const slides: Slide[] = [
   {
     id: "nature",
     top: () => fill(t.nature.top, { year: String(eventYear("feynman")) }),
+    bottom: () => t.nature.bottom,
     cites: ["feynman", "qcvc"],
     act: { kind: "next" },
   },
-  { id: "bitQubit", top: () => t.bitQubit.top, bottom: () => fill(t.bitQubit.bottom, BIT), act: { kind: "next" } },
-  { id: "bitHow", top: () => fill(t.bitHow.top, BIT), cites: ["qcvc"], act: { kind: "next" } },
-  { id: "h1", top: () => t.h1.top, act: { kind: "scene" } },
   {
-    id: "h1Done",
+    id: "qubit",
     top: (c) =>
-      fill(t.h1Done.top, {
-        ...BIT,
-        zeros: String(c.scene.zeros ?? 0),
-        ones: String(c.scene.ones ?? 0),
-        p: fmtPercent(probabilities(MIXED)[0]),
-      }),
-    curious: [
-      () => fill(t.h1Done.curious1, { a: fmtNum(MIXED[0]), p: fmtPercent(probabilities(MIXED)[0]) }),
-      () => t.h1Done.curious2,
-    ],
+      c.scene.measured
+        ? fill(t.qubit.done.top, { ...BIT, zeros: String(c.scene.zeros ?? 0), ones: String(c.scene.ones ?? 0), p })
+        : fill(c.scene.mixed ? t.qubit.mixed.top : t.qubit.start.top, BIT),
+    bottom: (c) => (c.scene.measured ? t.qubit.done.bottom : c.scene.mixed ? t.qubit.mixed.bottom : t.qubit.start.bottom),
+    curious: [() => fill(t.qubit.curious1, { a: fmtNum(MIXED[0]), p }), () => t.qubit.curious2],
     cites: ["qcvc"],
-    act: { kind: "next" },
+    act: { kind: "scene" },
   },
-  { id: "h1Link", top: () => t.h1Link.top, bottom: () => t.h1Link.bottom, cites: ["qcvc"], act: { kind: "next" } },
   {
     id: "twiceBet",
     top: () => t.twiceBet.top,
@@ -68,22 +64,13 @@ export const slides: Slide[] = [
   },
   {
     id: "interference",
-    top: (c) => t.interference.reply[c.answers.twice as "half" | "zero" | "one"] ?? t.interference.reply.half,
+    top: (c) =>
+      c.scene.interfered
+        ? fill(t.interference.done.top, BIT)
+        : fill(t.interference.ask, { reply: t.interference.reply[c.answers.twice as Twice] ?? t.interference.reply.half }),
+    bottom: (c) => (c.scene.interfered ? t.interference.done.bottom : t.interference.watch),
+    cites: ["qcvc"],
     act: { kind: "scene" },
-  },
-  {
-    id: "interferenceHow",
-    top: () => fill(t.interferenceHow.top, BIT),
-    bottom: () => t.interferenceHow.bottom,
-    cites: ["qcvc"],
-    act: { kind: "next" },
-  },
-  {
-    id: "interferenceLink",
-    top: () => t.interferenceLink.top,
-    bottom: () => t.interferenceLink.bottom,
-    cites: ["qcvc"],
-    act: { kind: "next" },
   },
   {
     id: "lotteryBet",
@@ -98,46 +85,39 @@ export const slides: Slide[] = [
   },
   {
     id: "lottery",
-    top: (c) => t.lottery.reply[c.answers.see as "all" | "one" | "none"] ?? t.lottery.reply.all,
+    top: (c) =>
+      c.scene.looked
+        ? fill(t.lottery.done.top, {
+            list: Array.from({ length: LOOKS }, (_, i) => String((c.scene[`look${i}`] ?? 0) + 1)).join(", "),
+            doors: String(DOORS),
+          })
+        : fill(t.lottery.ask, { reply: t.lottery.reply[c.answers.see as See] ?? t.lottery.reply.all }),
+    bottom: (c) => (c.scene.looked ? t.lottery.done.bottom : t.lottery.watch),
+    curious: [() => fill(t.lottery.curious, { q: String(QUBITS) })],
+    cites: ["qcvc"],
     act: { kind: "scene" },
   },
   {
-    id: "lotteryDone",
-    top: (c) =>
-      fill(t.lotteryDone.top, {
-        list: Array.from({ length: LOOKS }, (_, i) => String((c.scene[`look${i}`] ?? 0) + 1)).join(", "),
-        doors: String(DOORS),
-      }),
-    bottom: () => t.lotteryDone.bottom,
-    curious: [() => fill(t.lotteryDone.curious, { q: String(QUBITS) })],
-    cites: ["qcvc"],
-    act: { kind: "next" },
-  },
-  { id: "twoN", top: () => t.twoN.top, act: { kind: "scene" } },
-  {
-    id: "twoNDone",
-    top: () => fill(t.twoNDone.top, { big: String(BIG), amps: fmtCount(stateVectorSize(BIG)) }),
-    bottom: () => fill(t.twoNDone.bottom, { field: ru.chapters.ch9 }),
+    id: "twoN",
+    top: (c) => (c.scene.grown ? fill(t.twoN.done.top, { big: String(BIG), amps: fmtCount(stateVectorSize(BIG)) }) : t.twoN.top),
+    bottom: (c) => (c.scene.grown ? fill(t.twoN.done.bottom, { field: ru.chapters.ch9 }) : t.twoN.bottom),
     cites: ["qcvc", "apple"],
-    act: { kind: "next" },
+    act: { kind: "scene" },
   },
-  { id: "noisy", top: () => t.noisy.top, bottom: () => t.noisy.bottom, cites: ["preskill"], act: { kind: "next" } },
   {
-    id: "logical",
-    top: () => t.logical.top,
-    bottom: () =>
-      fill(t.logical.bottom, { min: fmtCount(physicalPerLogical(D_MIN)), max: fmtCount(physicalPerLogical(D_MAX)) }),
-    cites: ["beverland"],
+    id: "noisy",
+    top: () => t.noisy.top,
+    bottom: () => fill(t.noisy.bottom, { min: fmtCount(physicalPerLogical(D_MIN)), max: fmtCount(physicalPerLogical(D_MAX)) }),
+    cites: ["preskill", "beverland"],
     act: { kind: "next" },
   },
   {
     id: "today",
     top: () => fill(t.today.top, { willow: fmtCount(WILLOW) }),
-    bottom: () => fill(t.today.bottom, { min: fmtCount(LATTICE) }),
-    cites: ["willow", "willowNature", "beverland"],
+    bottom: () => t.today.bottom,
+    cites: ["willow", "willowNature", "hoefler"],
     act: { kind: "next" },
   },
-  { id: "future", top: () => t.future.top, bottom: () => t.future.bottom, cites: ["hoefler"], act: { kind: "next" } },
   {
     id: "rule",
     top: () => t.rule.top,
