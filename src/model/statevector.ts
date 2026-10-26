@@ -41,6 +41,14 @@ export function rotate(a: Amps, q: number, theta: number): Amps {
   return out;
 }
 
+/**
+ * Шанс, что фотон-кубит пройдёт фильтр, ось которого повёрнута на angle от «0» к «1»:
+ * квадрат тени стрелки на ось фильтра (закон Малюса для одного фотона). Фильтр «1» — angle = π/2.
+ */
+export function filterPass(a: Amps, angle: number): number {
+  return (a[0] * Math.cos(angle) + a[1] * Math.sin(angle)) ** 2;
+}
+
 export function hadamardAll(a: Amps): Amps {
   let out = a;
   for (let q = 0; 1 << q < a.length; q++) out = hadamard(out, q);

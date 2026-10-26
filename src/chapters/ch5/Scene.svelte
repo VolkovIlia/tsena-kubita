@@ -3,14 +3,14 @@
   import type { SceneProps } from "../../deck/types";
   import { fill, fmtCount, fmtPercent } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
-  import { basis, measure, probabilities, rotate, uniform, type Amps } from "../../model/statevector";
+  import { basis, filterPass, measure, probabilities, rotate, uniform, type Amps } from "../../model/statevector";
   import ExecutorIcon from "../../ui/ExecutorIcon.svelte";
   import Frame from "../../ui/Frame.svelte";
   import { animate, reducedMotion } from "../../ui/motion";
   import { exName } from "../../ui/names";
   import Arrow from "./Arrow.svelte";
   import Bars from "./Bars.svelte";
-  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, TURN, TURN_DEG, WILLOW } from "./slides";
+  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, TURN, WILLOW } from "./slides";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch5.scene;
@@ -29,57 +29,73 @@
     noisy: "lattice",
     today: "lattice",
   };
-  /** Сколько раз измерить после второго H, чтобы увидеть «всегда ноль». */
+  /** Сколько фотонов подряд пустить, когда стрелка стоит на «1», чтобы увидеть «всегда «1»». */
   const INTERFERE_MEASURES = 3;
   const SNAP_MS = 700;
   const TURN_MS = 700;
   let interfered = $state(false);
   const panel = $derived(slide === "interference" && interfered ? "paths" : (PANELS[slide] ?? "icon"));
 
-  // Кубит-стрелка: угол от «0» к «1»; амплитуды — тени стрелки на оси
+  // Кубит-стрелка: угол от «0» к «1»; амплитуды — тени стрелки на оси.
+  // Фильтр: ось под углом fdeg от «0» к «1» (фильтр «1» — четверть оборота); прошёл фотон — бит «1», поглощён — «0».
+  const RAD = Math.PI / 180;
+  const FILTER_ONE = 90;
   let deg = $state(0);
+  let fdeg = $state(FILTER_ONE);
+  let gdeg = $state(0);
   let amps = $state<Amps>(basis(1));
   let outcomes = $state<number[]>([]);
   let snap = $state<number | null>(null);
   let turning = $state(false);
+  let tuned = $state(false);
+  let measured = $state(false);
   let gated = $state(false);
   const last = $derived(outcomes.length ? outcomes[outcomes.length - 1] : null);
-  /** Куда вентиль поставит стрелку: пунктир-подсказка на слайдах с поворотом. */
+  const filterOpen = $derived(slide === "arrow" && measured);
+  const pass = $derived(filterPass(amps, fdeg * RAD));
+  /** Куда вентиль поставит стрелку: пунктир-подсказка на слайдах с вентилем. */
   const ghost = $derived<[number, number] | null>(
-    (slide === "gate" && !gated) || (slide === "interference" && amps[1] < 0.99) ? (rotate(amps, 0, TURN) as [number, number]) : null,
+    (slide === "gate" || (slide === "interference" && !interfered)) && gdeg !== 0 ? (rotate(amps, 0, gdeg * RAD) as [number, number]) : null,
   );
-  /** На миг после измерения стрелка ложится на выпавшую ось. */
-  const shown = $derived(snap === null ? amps : basis(1, snap));
+  /** На миг после измерения стрелка ложится на ось фильтра (прошёл) или поперёк неё (поглощён). */
+  const shown = $derived<Amps>(snap === null ? amps : [Math.cos(snap), Math.sin(snap)]);
+  /** Тень стрелки на ось фильтра — рисуется, когда фильтр можно крутить. */
+  const shadow = $derived(amps[0] * Math.cos(fdeg * RAD) + amps[1] * Math.sin(fdeg * RAD));
   let snapTimer: ReturnType<typeof setTimeout> | undefined;
   let cancelTurn = () => {};
 
-  let tuned = $state(false);
+  // Слайд «стрелка»: игрок крутит стрелку и фильтр; любая перестановка начинает серию фотонов заново
   $effect(() => {
-    if (slide !== "arrow" || tuned) return;
-    const r = (deg * Math.PI) / 180;
-    amps = [Math.cos(r), Math.sin(r)];
-    const p1 = probabilities(amps)[1];
-    if (Math.abs(p1 - TARGET.p) > TARGET.tolerance) return;
+    if (slide !== "arrow") return;
+    amps = [Math.cos(deg * RAD), Math.sin(deg * RAD)];
+    const f = fdeg;
     untrack(() => {
-      tuned = true;
-      set("tuned", 1);
-      set("po", p1);
+      outcomes = [];
+      const p = filterPass(amps, f * RAD);
+      if (f === FILTER_ONE) set("po", p);
+      if (!tuned && f === FILTER_ONE && Math.abs(p - TARGET.p) <= TARGET.tolerance) {
+        tuned = true;
+        set("tuned", 1);
+      }
+      if (measured && f !== FILTER_ONE) set("filtered", 1);
+      if (measured) set("pf", p);
     });
   });
 
-  /** Вентиль-поворот: стрелка плавно поворачивается на TURN. */
+  /** Вентиль: стрелка плавно поворачивается на выбранный угол. */
   function applyTurn() {
+    const theta = gdeg * RAD;
     const from = Math.atan2(amps[1], amps[0]);
-    const target = rotate(amps, 0, TURN);
-    const to = from + TURN;
+    const target = rotate(amps, 0, theta);
     turning = true;
+    outcomes = [];
     cancelTurn = animate(
       TURN_MS,
-      (f) => (amps = [Math.cos(from + (to - from) * f), Math.sin(from + (to - from) * f)]),
+      (f) => (amps = [Math.cos(from + theta * f), Math.sin(from + theta * f)]),
       () => {
         amps = target;
         turning = false;
-        if (slide !== "gate") return;
+        if (slide !== "gate" || gated || Math.abs(filterPass(amps, FILTER_ONE * RAD) - TARGET.half) > 0.01) return;
         gated = true;
         set("gated", 1);
         done();
@@ -88,22 +104,25 @@
   }
 
   function measureOnce() {
-    const k = measure(amps, Math.random);
+    const axis = fdeg * RAD;
+    const k = Math.random() < pass ? 1 : 0;
     outcomes = [...outcomes, k];
     clearTimeout(snapTimer);
-    snap = k;
+    // поглощённый — поперёк фильтра, с той стороны, куда смотрела стрелка
+    const across = axis - Math.PI / 2;
+    const side = amps[0] * Math.cos(across) + amps[1] * Math.sin(across);
+    snap = k === 1 ? (shadow >= 0 ? axis : axis + Math.PI) : side >= 0 ? across : across + Math.PI;
     snapTimer = setTimeout(() => (snap = null), reducedMotion() ? 0 : SNAP_MS);
-    if (slide === "interference" && outcomes.length >= INTERFERE_MEASURES) {
+    if (slide === "interference" && Math.abs(amps[1]) > 0.99 && outcomes.length >= INTERFERE_MEASURES) {
       interfered = true;
       set("interfered", 1);
       return done();
     }
-    if (slide !== "arrow" || outcomes.length < MEASURES) return;
-    const ps = probabilities(amps);
-    set("zeros", outcomes.filter((b) => b === 0).length);
+    if (slide !== "arrow" || measured || outcomes.length < MEASURES) return;
+    measured = true;
     set("ones", outcomes.filter((b) => b === 1).length);
-    set("pz", ps[0]);
-    set("po", ps[1]);
+    set("runP", pass);
+    set("pf", pass);
     set("measured", 1);
     done();
   }
@@ -160,15 +179,18 @@
       cancelTurn();
       snap = null;
       outcomes = [];
+      fdeg = FILTER_ONE;
       if (s === "arrow") {
         deg = 0;
         tuned = false;
-      }
-      else if (s === "gate") {
+        measured = false;
+      } else if (s === "gate") {
         amps = basis(1);
+        gdeg = 0;
         gated = false;
       } else if (s === "twiceBet" || s === "interference") {
         amps = MIXED;
+        gdeg = Math.round(TURN / RAD);
         interfered = false;
       } else if (s === "lotteryBet" || s === "lottery") looks = [];
       else if (s === "twoN") q = QUBITS;
@@ -193,13 +215,20 @@
     <svg viewBox="0 0 640 360" role="img" aria-label={label}>
       {#if panel === "arrow"}
         <Arrow a0={shown[0]} a1={shown[1]} cx={170} cy={175} r={115} labels={[BIT.zero, BIT.one]} {ghost} />
-        <text x="170" y="345" text-anchor="middle" class="muted num">{fill(t.chance, { po: fmtPercent(probabilities(shown)[1]) })}</text>
-        <!-- фильтр «1»: пропускает фотон с шансом квадрата тени на ось «1», за ним лампа-детектор -->
-        <g class="filter">
-          <rect x="395" y="85" width="44" height="180" rx="4" />
-          {#each Array.from({ length: 9 }, (_, i) => i) as i}<line x1="401" y1={103 + i * 18} x2="433" y2={103 + i * 18} />{/each}
+        {#if filterOpen}
+          {@const dx = Math.sin(fdeg * RAD)}
+          {@const dy = -Math.cos(fdeg * RAD)}
+          <line class="axis" x1={170 - dx * 135} y1={175 - dy * 135} x2={170 + dx * 135} y2={175 + dy * 135} />
+          <line class="drop" x1={170 + shown[1] * 115} y1={175 - shown[0] * 115} x2={170 + dx * shadow * 115} y2={175 + dy * shadow * 115} />
+          <line class="fshadow" x1="170" y1="175" x2={170 + dx * shadow * 115} y2={175 + dy * shadow * 115} />
+        {/if}
+        <text x="170" y="345" text-anchor="middle" class="muted num">{fill(t.chance, { po: fmtPercent(snap === null ? pass : filterPass(shown, fdeg * RAD)) })}</text>
+        <!-- фильтр: щели вдоль его оси; пропускает фотон с шансом квадрата тени стрелки на эту ось, за ним лампа -->
+        <g class="filter" transform="rotate({fdeg - FILTER_ONE} 417 175)">
+          <circle cx="417" cy="175" r="62" />
+          {#each [-40, -24, -8, 8, 24, 40] as y}<line x1={417 - Math.sqrt(62 ** 2 - y ** 2) + 6} y1={175 + y} x2={417 + Math.sqrt(62 ** 2 - y ** 2) - 6} y2={175 + y} />{/each}
         </g>
-        <text x="417" y="295" text-anchor="middle" class="muted">{fill(t.filter, BIT)}</text>
+        <text x="417" y="275" text-anchor="middle" class="muted">{fdeg === FILTER_ONE ? fill(t.filterOne, BIT) : t.filter}</text>
         {#key outcomes.length}
           <circle class="lamp flash" class:on={last === 1} cx="555" cy="175" r="52" />
         {/key}
@@ -253,17 +282,15 @@
 
   {#if slide === "arrow"}
     <div class="controls">
-      <label class="turn">{t.turn}<input type="range" min="0" max="90" step="1" bind:value={deg} disabled={tuned} /></label>
-      <button class="primary" onclick={measureOnce} disabled={!tuned || outcomes.length >= MEASURES}>{t.measure}</button>
+      <label class="turn">{t.turn}<input type="range" min="0" max="180" step="1" bind:value={deg} /></label>
+      {#if filterOpen}<label class="turn">{t.turnFilter}<input type="range" min="0" max="180" step="1" bind:value={fdeg} /></label>{/if}
+      <button class="primary" onclick={measureOnce} disabled={!tuned || snap !== null}>{t.measure}</button>
     </div>
-  {:else if (slide === "gate" && !gated) || (slide === "interference" && !interfered)}
-    <div class="actions">
-      <button class:primary={slide === "gate" || amps[1] < 0.99} onclick={applyTurn} disabled={turning || (slide === "interference" && amps[1] > 0.99)}>
-        {fill(t.turnBy, { deg: TURN_DEG })}
-      </button>
-      {#if slide === "interference"}
-        <button class:primary={amps[1] > 0.99} onclick={measureOnce} disabled={turning || amps[1] < 0.99}>{t.measure}</button>
-      {/if}
+  {:else if slide === "gate" || (slide === "interference" && !interfered)}
+    <div class="controls">
+      <label class="turn"><span class="num">{fill(t.gateAngle, { deg: String(gdeg).replace("-", "−") })}</span><input type="range" min="-90" max="90" step="15" bind:value={gdeg} disabled={turning} /></label>
+      <button class:primary={!gated || slide === "interference"} onclick={applyTurn} disabled={turning || gdeg === 0}>{t.apply}</button>
+      <button class:primary={gated} onclick={measureOnce} disabled={turning || snap !== null}>{t.measure}</button>
     </div>
   {:else if slide === "lottery"}
     <div class="actions"><button onclick={look} disabled={looks.length >= LOOKS}>{t.look}</button></div>
@@ -273,8 +300,8 @@
 
   {#if panel === "arrow" && outcomes.length}
     <p class="num status" aria-live="polite">
-      {#if slide === "arrow"}{fill(t.measured, { n: String(outcomes.length), max: String(MEASURES) })} · {/if}
-      {fill(t.outcomes, { list: outcomes.map(String).join(" ") })}
+      {fill(t.photons, { n: String(outcomes.length), k: String(outcomes.filter((b) => b === 1).length) })} ·
+      {fill(t.outcomes, { list: outcomes.slice(-12).map(String).join(" ") })}
     </p>
   {:else if panel === "doors" && opened !== null}
     <p class="num status" aria-live="polite">
@@ -290,7 +317,10 @@
   text.sign { font-size: 40px; }
   .lamp { fill: var(--paper); stroke: var(--ink); stroke-width: 4; transition: fill 200ms; }
   .lamp.on { fill: var(--core); }
-  .filter rect { fill: none; stroke: var(--ink); stroke-width: 3; }
+  .filter circle { fill: none; stroke: var(--ink); stroke-width: 3; }
+  .axis { stroke: var(--muted); stroke-width: 2; stroke-dasharray: 6 5; }
+  .drop { stroke: var(--core); stroke-width: 2; stroke-dasharray: 3 4; }
+  .fshadow { stroke: var(--core); stroke-width: 10; stroke-linecap: round; opacity: 0.7; }
   .filter line { stroke: var(--muted); stroke-width: 2; }
   .flash { animation: flash 300ms ease-out; }
   @keyframes flash { from { opacity: 0.3; } to { opacity: 1; } }

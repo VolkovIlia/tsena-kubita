@@ -16,8 +16,8 @@ export const MAX_QUBITS = Math.log2(scenario.compare_items);
 /** Сколько фотонов игрок пускает через фильтр и сколько дверей открывает. */
 export const MEASURES = 10;
 export const LOOKS = 3;
-/** Цель настройки стрелки: фильтр «1» пропускает фотон в трёх случаях из четырёх (выбор сцены, ±5 п. п.). */
-export const TARGET = { p: 0.75, tolerance: 0.05 };
+/** Цель настройки стрелки: фильтр «1» пропускает фотон в трёх случаях из четырёх (выбор сцены, ±5 п. п.). Цель вентиля — через раз. */
+export const TARGET = { p: 0.75, tolerance: 0.05, half: 0.5 };
 /** Вентиль главы — поворот на четверть прямого угла; из «0» он даёт равную смесь. */
 export const TURN = Math.PI / 4;
 export const TURN_DEG = String((TURN * 180) / Math.PI);
@@ -47,22 +47,31 @@ export const slides: Slide[] = [
   {
     id: "arrow",
     top: (c) =>
-      c.scene.measured
-        ? fill(t.arrow.done.top, { ones: String(c.scene.ones ?? 0), n: String(MEASURES), po: fmtPercent(c.scene.po ?? 0) })
-        : c.scene.tuned
-          ? fill(t.arrow.tuned.top, { ...BIT, po: fmtPercent(c.scene.po ?? 0) })
-          : fill(t.arrow.start.top, { tick: ru.chapters.ch1 }),
-    bottom: (c) => (c.scene.measured ? t.arrow.done.bottom : c.scene.tuned ? t.arrow.tuned.bottom : fill(t.arrow.start.bottom, BIT)),
+      c.scene.filtered
+        ? fill(t.arrow.filtered.top, { pf: fmtPercent(c.scene.pf ?? 0) })
+        : c.scene.measured
+          ? fill(t.arrow.done.top, { ones: String(c.scene.ones ?? 0), n: String(MEASURES), po: fmtPercent(c.scene.runP ?? 0) })
+          : c.scene.tuned
+            ? fill(t.arrow.tuned.top, { ...BIT, po: fmtPercent(c.scene.po ?? 0) })
+            : fill(t.arrow.start.top, { tick: ru.chapters.ch1 }),
+    bottom: (c) =>
+      c.scene.filtered
+        ? t.arrow.filtered.bottom
+        : c.scene.measured
+          ? t.arrow.done.bottom
+          : c.scene.tuned
+            ? t.arrow.tuned.bottom
+            : fill(t.arrow.start.bottom, BIT),
     curious: [() => t.arrow.curious, () => t.arrow.curious2],
-    cites: ["quillen", "qcvc", "arute"],
+    cites: ["quillen", "qcvc"],
     act: { kind: "scene" },
   },
   {
     id: "gate",
     top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : fill(t.gate.top, { tick: ru.chapters.ch1 })),
-    bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, { ...BIT, deg: TURN_DEG })),
+    bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, BIT)),
     curious: [() => t.gate.curious],
-    cites: ["qcvc"],
+    cites: ["qcvc", "arute"],
     act: { kind: "scene" },
   },
   {
@@ -81,7 +90,7 @@ export const slides: Slide[] = [
     top: (c) =>
       c.scene.interfered
         ? fill(t.interference.done.top, BIT)
-        : fill(t.interference.ask, { reply: t.interference.reply[c.answers.twice as Twice] ?? t.interference.reply.half }),
+        : fill(t.interference.ask, { deg: TURN_DEG, reply: t.interference.reply[c.answers.twice as Twice] ?? t.interference.reply.half }),
     bottom: (c) => (c.scene.interfered ? fill(t.interference.done.bottom, BIT) : t.interference.watch),
     cites: ["qcvc"],
     act: { kind: "scene" },

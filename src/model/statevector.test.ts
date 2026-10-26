@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basis, hadamard, mark, mean, measure, probabilities, reflect, rotate, uniform, type Amps } from "./statevector";
+import { basis, filterPass, hadamard, mark, mean, measure, probabilities, reflect, rotate, uniform, type Amps } from "./statevector";
 import { groverSuccess } from "./tick";
 
 const close = (a: Amps, b: Amps) => a.forEach((x, i) => expect(x).toBeCloseTo(b[i], 12));
@@ -43,5 +43,17 @@ describe("поворот кубита (глава «Кубит»)", () => {
   });
   it("поворот не меняет длину стрелки", () => {
     expect(norm(rotate([0.6, 0.8], 0, 1.234))).toBeCloseTo(1, 12);
+  });
+});
+
+describe("фильтр для фотона-кубита", () => {
+  it("фильтр «1» пропускает с шансом квадрата амплитуды «1»", () => {
+    const a = rotate(basis(1), 0, Math.PI / 3);
+    expect(filterPass(a, Math.PI / 2)).toBeCloseTo(probabilities(a)[1], 12);
+  });
+  it("фильтр вдоль стрелки пропускает всегда, поперёк — никогда", () => {
+    const a = rotate(basis(1), 0, 0.7);
+    expect(filterPass(a, 0.7)).toBeCloseTo(1, 12);
+    expect(filterPass(a, 0.7 + Math.PI / 2)).toBeCloseTo(0, 12);
   });
 });
