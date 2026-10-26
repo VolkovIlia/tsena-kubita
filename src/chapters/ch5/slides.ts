@@ -1,7 +1,7 @@
 import params from "../../../data/params.json";
 import type { Slide } from "../../deck/types";
 import { eventYear } from "../../game/chapters";
-import { fill, fmtCount, fmtNum, fmtPercent } from "../../i18n/format";
+import { fill, fmtCount, fmtPercent } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
 import { basis, hadamard, probabilities } from "../../model/statevector";
 import { memoryScales, physicalPerLogical, scenario, stateVectorSize } from "../../model/tick";
@@ -41,13 +41,27 @@ export const slides: Slide[] = [
     act: { kind: "next" },
   },
   {
-    id: "qubit",
+    id: "arrow",
     top: (c) =>
       c.scene.measured
-        ? fill(t.qubit.done.top, { ...BIT, zeros: String(c.scene.zeros ?? 0), ones: String(c.scene.ones ?? 0), p })
-        : fill(c.scene.mixed ? t.qubit.mixed.top : t.qubit.start.top, BIT),
-    bottom: (c) => (c.scene.measured ? t.qubit.done.bottom : c.scene.mixed ? t.qubit.mixed.bottom : t.qubit.start.bottom),
-    curious: [() => fill(t.qubit.curious1, { a: fmtNum(MIXED[0]), p }), () => t.qubit.curious2],
+        ? fill(t.arrow.done.top, {
+            ...BIT,
+            zeros: String(c.scene.zeros ?? 0),
+            ones: String(c.scene.ones ?? 0),
+            pz: fmtPercent(c.scene.pz ?? 0),
+            po: fmtPercent(c.scene.po ?? 0),
+          })
+        : fill(t.arrow.top, BIT),
+    bottom: (c) => (c.scene.measured ? t.arrow.done.bottom : t.arrow.bottom),
+    curious: [() => t.arrow.curious],
+    cites: ["qcvc"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "gate",
+    top: (c) => (c.scene.gated ? fill(t.gate.done.top, { ...BIT, p }) : t.gate.top),
+    bottom: (c) => (c.scene.gated ? t.gate.done.bottom : fill(t.gate.bottom, BIT)),
+    curious: [() => fill(t.gate.curious, BIT)],
     cites: ["qcvc"],
     act: { kind: "scene" },
   },
@@ -68,7 +82,7 @@ export const slides: Slide[] = [
       c.scene.interfered
         ? fill(t.interference.done.top, BIT)
         : fill(t.interference.ask, { reply: t.interference.reply[c.answers.twice as Twice] ?? t.interference.reply.half }),
-    bottom: (c) => (c.scene.interfered ? t.interference.done.bottom : t.interference.watch),
+    bottom: (c) => (c.scene.interfered ? fill(t.interference.done.bottom, BIT) : t.interference.watch),
     cites: ["qcvc"],
     act: { kind: "scene" },
   },
