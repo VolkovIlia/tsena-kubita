@@ -154,13 +154,18 @@
   <figcaption>
     <ExecutorIcon {ex} size={24} />
     <span class="name">{exName(ex)}</span>
-    {#if showSteps}<span class="num steps">{fill(ru.ui.steps, { done: fmtCount(done), total: of(ex === "qc" ? groverOptimal(items) : total) })}</span>{/if}
+    {#if showSteps}
+      <span class="num steps">
+        <span class="step-line">{fill(ru.ui.steps, { done: fmtCount(done) })}</span>
+        <span class="step-line">{fill(ru.ui.stepsTotal, { total: of(ex === "qc" ? groverOptimal(items) : total) })}</span>
+      </span>
+    {/if}
     {#if mode === "chain" && ex !== "core"}<span class="wait">{ru.ui.waitingOthers}</span>{/if}
   </figcaption>
 </figure>
 
 <style>
-  .hands { margin: 0; display: grid; gap: 0.25rem; justify-items: start; min-width: 0; }
+  .hands { margin: 0; display: grid; gap: 0.25rem; justify-items: start; min-width: 0; container-type: inline-size; }
   .draw { max-width: 100%; overflow: hidden; }
   svg { display: block; height: auto; }
   .one { width: 40px; }
@@ -181,8 +186,13 @@
     to { opacity: 1; }
   }
   figcaption { display: flex; flex-wrap: wrap; align-items: center; gap: 0 0.5rem; font-size: 0.875rem; line-height: 1.3; }
-  .steps, .wait { flex-basis: 100%; }
+  .wait { flex-basis: 100%; }
   .name { font-weight: 600; color: var(--ex); }
-  .steps { color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* Счётчик разбит на две строки: рост числа меняет только цифры, а не перенос всей подписи. */
+  .steps { display: grid; flex-basis: 100%; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.8125rem; line-height: 1.3; }
+  .step-line { white-space: nowrap; }
+  @container (min-width: 210px) {
+    .steps { display: flex; gap: 0 0.3em; }
+  }
   .wait { color: var(--muted); font-style: italic; }
 </style>

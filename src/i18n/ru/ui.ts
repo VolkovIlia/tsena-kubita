@@ -30,6 +30,7 @@ export const ui = {
   translation: "перевод",
   waitingOthers: "остальные ждут",
   board: { hands: "Считают одновременно", rate: "Тиков в секунду", steps: "Шагов подряд", time: "Время" },
-  steps: "шагов: {done} из {total}",
+  steps: "шагов: {done}",
+  stepsTotal: "из {total}",
   nextChapter: "Дальше: {name}",
 } as const;
