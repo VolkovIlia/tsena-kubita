@@ -168,7 +168,7 @@
     "sycamore": {"year": 2019, "month": 10, "qubits": 53, "quantum_seconds": 200, "claimed_classical_years": 10000, "ibm_days": 2.5, "source": "Arute et al. Nature 574, 505–510 (2019), аннотация; IBM Quantum blog «On “quantum supremacy”» (22.10.2019): оценка 2,5 дня, расчёт не выполнялся", "source_url": "https://www.nature.com/articles/s41586-019-1666-5", "ibm_source_url": "https://www.ibm.com/quantum/blog/on-quantum-supremacy", "verified": true},
     "willow": {"year": 2024, "month": 12, "qubits": 105, "source": "Google blog, Meet Willow (09.12.2024); Nature 638, 920–926: Quantum error correction below the surface code threshold", "source_url": "https://blog.google/technology/research/google-willow-quantum-chip/", "nature_url": "https://www.nature.com/articles/s41586-024-08449-y", "verified": true},
     "echoes": { "year": 2025, "source": "Google Quantum AI blog, 22.10.2025", "source_url": "https://research.google/blog/a-verifiable-quantum-advantage/", "verified": true },
-    "majorana2": {"name": "Majorana 2", "year": 2026, "month": 6, "reliability_claim": 1000, "target_year": 2029, "source": "Microsoft Source, Introducing Majorana 2 (02.06.2026): время жизни кубита в 1 000 раз дольше прошлого поколения; масштабируемый квантовый компьютер — к 2029 году. Препринт без рецензии; контрапункт — Science News", "source_url": "https://news.microsoft.com/source/features/innovation/majorana-2-microsoft-discovery-agentic-ai/", "critique_url": "https://www.sciencenews.org/article/microsoft-quantum-chip-upgrade-majorana", "verified": true},
+    "majorana2": {"name": "Majorana 2", "year": 2026, "month": 6, "reliability_claim": 1000, "mean_lifetime_s": 20, "max_lifetime_s": 60, "target_year": 2029, "source": "Microsoft Source, Introducing Majorana 2 (02.06.2026): время жизни кубита в 1 000 раз дольше прошлого поколения, среднее 20 с, отдельные до минуты; масштабируемый квантовый компьютер — к 2029 году. Препринт без рецензии; контрапункт — Science News", "source_url": "https://news.microsoft.com/source/features/innovation/majorana-2-microsoft-discovery-agentic-ai/", "critique_url": "https://www.sciencenews.org/article/microsoft-quantum-chip-upgrade-majorana", "verified": true},
     "hoefler": { "year": 2023, "source": "Hoefler, Häner, Troyer. CACM 66(5), 2023", "source_url": "https://arxiv.org/abs/2307.00523", "verified": true },
     "starling": { "year": 2029, "logical_qubits": 200, "gates": 1e8, "source": "IBM Quantum blog: Starling", "source_url": "https://www.ibm.com/quantum/blog/large-scale-ftqc", "verified": true }
   },
@@ -222,7 +222,8 @@
     "speedup_claim": 13000,
     "qubits_used": 65,
     "chip_qubits": 105,
-    "source": "Google Quantum AI blog, 22.10.2025",
+    "duration_hours": 2,
+    "source": "Google Quantum AI blog, 22.10.2025: 65 из 105 кубитов, около 2 часов, оценка 13 000× быстрее классического суперкомпьютера",
     "source_url": "https://research.google/blog/a-verifiable-quantum-advantage/",
     "verified": true
   },

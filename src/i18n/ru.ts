@@ -15,6 +15,7 @@ import { ch7 } from "./ru/ch7";
 import { ch8 } from "./ru/ch8";
 import { ch9 } from "./ru/ch9";
 import { cite } from "./ru/cite";
+import { newsArticles } from "./ru/newsArticles";
 import { ui } from "./ru/ui";
 
 export const ru = {
@@ -97,6 +98,7 @@ export const ru = {
   ch9,
   ch10,
   cite,
+  newsArticles,
 } as const;
 
 export type Dict = typeof ru;

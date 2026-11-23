@@ -350,9 +350,14 @@ describe("хроника: числа событий", () => {
     expect(fmtCount(tl.willow.qubits)).toBe("105");
     expect(fmtCount(tl.ibmCloud.qubits)).toBe("5");
     expect(fmtCount(params.quantum_echoes.speedup_claim)).toBe("13 000");
+    expect(fmtCount(params.quantum_echoes.qubits_used)).toBe("65");
+    expect(fmtCount(params.quantum_echoes.chip_qubits)).toBe("105");
+    expect(fmtNum(params.quantum_echoes.duration_hours)).toBe("2");
   });
-  it("Majorana 2: время жизни в 1 000 раз дольше, цель — 2029; Starling — 200 логических кубитов, 100 миллионов гейтов", () => {
+  it("Majorana 2: время жизни в 1 000 раз дольше, среднее 20 с, до минуты, цель — 2029; Starling — 200 логических кубитов, 100 миллионов гейтов", () => {
     expect(fmtCount(tl.majorana2.reliability_claim)).toBe("1 000");
+    expect(fmtNum(tl.majorana2.mean_lifetime_s)).toBe("20");
+    expect(fmtNum(tl.majorana2.max_lifetime_s)).toBe("60");
     expect(tl.majorana2.target_year).toBe(2029);
     expect(tl.starling.year).toBe(2029);
     expect(fmtCount(tl.starling.logical_qubits)).toBe("200");
