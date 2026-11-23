@@ -1,5 +1,5 @@
 /** Числа главы «Тик»: только комбинации функций модели (src/model/tick.ts). */
-import { adderTicks, DAY, executors, powerOfTenBelow, solveSeconds, ticksPerCycle } from "../../model/tick";
+import { adderTicks, DAY, executors, multiplierTicks, powerOfTenBelow, solveSeconds, ticksPerCycle } from "../../model/tick";
 
 /** Разрядность сумматора на сцене; tick.test.ts: adderTicks(8) = 40. */
 export const BITS = 8;
@@ -7,6 +7,14 @@ export const BITS = 8;
 export const GATES = adderTicks(1);
 /** Тиков на сложение двух BITS-битных чисел. */
 export const ADD_TICKS = adderTicks(BITS);
+/** Разрядность умножения на сцене: 4 × 4 бита; tick.test.ts: multiplierTicks(4) = 96. */
+export const MUL_BITS = 4;
+export const MUL_TICKS = multiplierTicks(MUL_BITS);
+/** Тиков на одну строку умножения: MUL_BITS вентилей «И» и одно сложение MUL_BITS-битных чисел. */
+export const ROW_TICKS = MUL_TICKS / MUL_BITS;
+/** Операнды умножения на сцене — выбор сцены, как 91 + 55. */
+export const MX = 11;
+export const MY = 13;
 /** Операций за такт и бит в операции: строки и клетки сетки такта. */
 export const CYCLE = executors.core.derivation;
 export const TPC = ticksPerCycle("core");

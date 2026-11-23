@@ -2,7 +2,23 @@ import type { Ctx, Slide } from "../../deck/types";
 import { eventYear } from "../../game/chapters";
 import { fill, fmtCount, fmtDuration, fmtExact } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
-import { ADD_TICKS, BITS, COUNT_ALOUD_S, CYCLE, DAY_TICKS, GATES, RATE, RATE_FLOOR, TPC, coreSeconds } from "./numbers";
+import { adderTicks } from "../../model/tick";
+import {
+  ADD_TICKS,
+  BITS,
+  COUNT_ALOUD_S,
+  CYCLE,
+  DAY_TICKS,
+  GATES,
+  MUL_BITS,
+  MUL_TICKS,
+  MX,
+  MY,
+  RATE,
+  RATE_FLOOR,
+  TPC,
+  coreSeconds,
+} from "./numbers";
 
 const t = ru.ch1;
 const n = {
@@ -20,6 +36,15 @@ const n = {
   years: fmtDuration(COUNT_ALOUD_S),
   add: fmtDuration(coreSeconds(ADD_TICKS)),
   dayTicks: fmtCount(DAY_TICKS),
+};
+/** Подстановки умножения: операнды, произведение, строка «И» и сложение. */
+const m = {
+  x: String(MX),
+  y: String(MY),
+  p: String(MX * MY),
+  bits: fmtExact(MUL_BITS),
+  add: fmtExact(adderTicks(MUL_BITS)),
+  ticks: fmtExact(MUL_TICKS),
 };
 type Rate = keyof typeof t.second.reply;
 /** Живой слайд: пока игрок не сделал действие — задание, после — объяснение. Ключ — то, что ставит сцена. */
@@ -47,6 +72,20 @@ export const slides: Slide[] = [
     act: { kind: "scene" },
     curious: [() => fill(t.adder.curious, n)],
     cites: ["kuphaldt"],
+  },
+  {
+    id: "mul",
+    top: (c) => fill(c.scene.multiplied ? t.mul.done.top : t.mul.top, m),
+    bottom: (c) => (c.scene.multiplied ? t.mul.done.bottom : t.mul.bottom),
+    act: { kind: "scene" },
+    curious: [() => fill(t.mul.curious, m)],
+    cites: ["kuphaldt"],
+  },
+  {
+    id: "sandbox",
+    top: (c) => (c.scene.played ? fill(t.sandbox.done.top, { add: n.ticks, mul: m.ticks }) : t.sandbox.top),
+    bottom: (c) => (c.scene.played ? t.sandbox.done.bottom : t.sandbox.bottom),
+    act: { kind: "scene" },
   },
   {
     id: "clock",

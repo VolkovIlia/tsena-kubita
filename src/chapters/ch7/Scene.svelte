@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import params from "../../../data/params.json";
   import type { SceneProps } from "../../deck/types";
   import { fill, fmtCount, fmtDuration, fmtNum, fmtSci } from "../../i18n/format";
@@ -11,6 +11,8 @@
   import { race, reducedMotion } from "../../ui/motion";
   import { exName } from "../../ui/names";
   import { slides } from "./slides";
+  import Price from "./Price.svelte";
+  import BreakEven from "./BreakEven.svelte";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch7.scene;
@@ -19,6 +21,9 @@
   const from = (id: string) => at >= order.indexOf(id);
   const N = scenario.safe_codes;
   const ALL: ExecutorId[] = ["core", "cores", "gpu", "qc"];
+  /** Квантовый тик в начале главы: цена тика, график безубыточности. */
+  const PRICE = ["qpriceBet", "qprice"];
+  const EVEN = ["evenBet", "evenFind"];
   const time = Object.fromEntries(ALL.map((id) => [id, solveSeconds(id, N)])) as Record<ExecutorId, number>;
   /** Сколько тиков квантовый компьютер делает за такт: столько клеток в плитке ширины. */
   const QC_OPS = Math.round(opsPerCycle("qc"));
@@ -31,13 +36,13 @@
   const LX = (640 - COLS * CELL) / 2;
   const FLICKER_MS = 300;
 
-  /** Панель: сейф, метрономы такта, ширина такта, решётка кубитов, табло. */
+  /** Панель: сейф, метрономы такта, ширина такта (и итог цены), решётка кубитов, табло. */
   const panel = $derived(
     slide === "price"
       ? "beat"
-      : slide === "width"
+      : slide === "width" || slide === "ratio"
         ? "width"
-        : slide === "qubits" || slide === "ratio"
+        : slide === "qubits"
           ? "lattice"
           : slide === "board"
             ? "board"
@@ -54,14 +59,20 @@
   function start() {
     started = true;
     const tEnd = slide === "race1" ? Math.max(time.core, time.qc) : time.gpu;
-    cancel = race(tEnd, (v) => (clock = v), done);
+    const key = slide === "race1" ? "race1" : "race2";
+    cancel = race(tEnd, (v) => (clock = v), () => {
+      set(key, 1);
+      done();
+    });
   }
 
+  /** Гонку открывает ставка на прошлом слайде: на слайде гонки она стартует сама, без кнопки. */
   $effect(() => {
     const id = slide;
     cancel();
     started = false;
     if (id === "all4") clock = 0;
+    if (id === "race1" || id === "race2") untrack(start);
   });
 
   // Ползунки: значения — log10
@@ -108,10 +119,21 @@
 </script>
 
 <div class="scene">
-  {#if panel === "board"}
+  {#if PRICE.includes(slide)}
+    <Price {slide} />
+  {:else if EVEN.includes(slide)}
+    <BreakEven
+      lines={slide === "evenBet" ? ["add", "mul"] : ["add", "mul", "search"]}
+      find={slide === "evenFind"}
+      onfound={() => {
+        set("even", 1);
+        done();
+      }}
+    />
+  {:else if panel === "board"}
     <Board ids={ALL} rows={["rate", "steps", "time"]} n={N} caption={fill(ru.ch7.board.caption, { n: fmtCount(N) })} />
   {:else}
-    <svg viewBox="0 0 640 230" role="img" aria-label={t.label}>
+    <svg viewBox="0 0 640 230" style="--vb-h: 230" role="img" aria-label={t.label}>
       {#if panel === "safe"}
         <g class="safe">
           <rect x="40" y="20" width="190" height="190" rx="14" />
@@ -176,9 +198,7 @@
       {/if}
     </div>
   {/if}
-  {#if (slide === "race1" || slide === "race2") && !started}
-    <div class="actions"><button class="primary" onclick={start}>{ru.ui.startRace}</button></div>
-  {:else if started}
+  {#if started}
     <p class="num clock" aria-live="off">{fill(ru.ui.clock, { t: fmtDuration(clock) })}</p>
   {/if}
 </div>

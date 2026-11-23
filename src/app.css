@@ -57,7 +57,8 @@ body {
 }
 /*
  * Слайд — на один экран: от 600×560 страница высотой в окно, колода — столбик «слова → сцена → слова»,
- * картинка сцены сжимается в оставшуюся высоту (Deck.svelte). На телефоне — обычная прокрутка.
+ * картинка сцены сжимается в оставшуюся высоту, но не ниже порога (Deck.svelte); не влезло и так —
+ * прокручивается страница. На телефоне — обычная прокрутка.
  */
 .page { max-width: 60rem; margin: 0 auto; padding: 0.75rem 1rem; }
 @media (min-width: 768px) { .page { padding: 1rem 2rem; } }
@@ -96,10 +97,6 @@ button.primary { background: var(--ink); color: var(--paper); }
 button.primary:disabled { background: var(--paper); color: var(--ink); }
 :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.5rem 0; }
-
-details { margin: 1rem 0; border-top: 1px solid var(--line); padding-top: 0.5rem; }
-summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
-details ul { padding-left: 1.25rem; }
 
 .counter { font-size: 2rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; }
 .ex-core { --ex: var(--core); }

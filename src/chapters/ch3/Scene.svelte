@@ -22,22 +22,19 @@
   );
 
   let clock = $state(0);
-  let started = $state(false);
   let serial = $state(0);
   let moved = false;
   let cancel = () => {};
   onDestroy(() => cancel());
 
-  /** Смена слайда: гонка задачи начинается с нуля, прошлые анимации отменяются. */
+  /** Смена слайда: прошлые анимации отменяются; гонку открыла ставка на прошлом слайде — она стартует сама, без кнопки. */
   $effect(() => {
     const id = slide;
     untrack(() => {
       cancel();
       cancel = () => {};
-      if (id === "cartoonBet" || id === "chainBet") {
-        clock = 0;
-        started = false;
-      }
+      if (id === "cartoonBet" || id === "chainBet") clock = 0;
+      if (id === "cartoonRace" || id === "chainRace") start();
     });
   });
 
@@ -68,7 +65,6 @@
   );
 
   function start() {
-    started = true;
     const key = phase === "chain" ? "chain" : "cartoon";
     cancel = race(
       Math.max(...CREW.map((id) => times[id])),
@@ -93,7 +89,7 @@
 
 <div class="scene" role="group" aria-label={label}>
   {#if phase === "amdahl"}
-    <svg viewBox="0 0 640 300" aria-hidden="true">
+    <svg viewBox="0 0 640 300" style="--vb-h: 300" aria-hidden="true">
       <text class="title" x="40" y="36">{d.amdahl.title}</text>
       <text class="muted" x="40" y="70">{d.amdahl.note}</text>
       {#each rows as row, i}
@@ -130,9 +126,6 @@
     </div>
     {#if phase !== "intro"}
       <div class="lanes"><Lanes {lanes} t={now} /></div>
-    {/if}
-    {#if slide === raceId}
-      <div class="actions"><button class="primary" disabled={started} onclick={start}>{ru.ui.startRace}</button></div>
     {/if}
   {/if}
 </div>

@@ -89,15 +89,12 @@ export const slides: Slide[] = [
   },
   {
     id: "cartoonRace",
-    top: (c) => t.cartoonRace.reply[c.answers.gpuCartoon as Classical] ?? t.cartoonRace.reply.gpu,
-    bottom: () => t.cartoonRace.bottom,
+    top: (c) =>
+      c.scene.cartoon
+        ? fill(t.cartoonDone.top, results(cartoon))
+        : t.cartoonRace.reply[c.answers.gpuCartoon as Classical] ?? t.cartoonRace.reply.gpu,
+    bottom: (c) => (c.scene.cartoon ? fill(t.cartoonDone.bottom, { x: weaker(), lanes: fmtCount(lane.lanes) }) : ""),
     act: { kind: "scene" },
-  },
-  {
-    id: "cartoonDone",
-    top: () => fill(t.cartoonDone.top, results(cartoon)),
-    bottom: () => fill(t.cartoonDone.bottom, { x: weaker(), lanes: fmtCount(lane.lanes) }),
-    act: { kind: "next" },
   },
   {
     id: "chainBet",
@@ -107,15 +104,12 @@ export const slides: Slide[] = [
   },
   {
     id: "chainRace",
-    top: (c) => t.chainRace.reply[c.answers.gpuChain as Classical] ?? t.chainRace.reply.core,
-    bottom: () => t.chainRace.bottom,
+    top: (c) =>
+      c.scene.chain
+        ? fill(t.chainDone.top, results(chain))
+        : t.chainRace.reply[c.answers.gpuChain as Classical] ?? t.chainRace.reply.core,
+    bottom: (c) => (c.scene.chain ? fill(t.chainDone.bottom, { x: weaker() }) : ""),
     act: { kind: "scene" },
-  },
-  {
-    id: "chainDone",
-    top: () => fill(t.chainDone.top, results(chain)),
-    bottom: () => fill(t.chainDone.bottom, { x: weaker() }),
-    act: { kind: "next" },
   },
   {
     id: "board",

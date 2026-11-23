@@ -13,7 +13,7 @@
   import { exName } from "../../ui/names";
   import { CARTOON_ITEMS, cartoon, chain, CREW } from "./times";
 
-  let { slide, done }: SceneProps = $props();
+  let { slide, set, done }: SceneProps = $props();
   const t = ru.ch4.scene;
   const lane = executors.gpu.lane;
 
@@ -26,10 +26,8 @@
     same: "gpu",
     cartoonBet: "cartoon",
     cartoonRace: "cartoon",
-    cartoonDone: "cartoon",
     chainBet: "chain",
     chainRace: "chain",
-    chainDone: "chain",
     board: "board",
     bridge: "machines",
     rule: "machines",
@@ -58,7 +56,7 @@
   let cancel = () => {};
   onDestroy(() => cancel());
 
-  /** Смена слайда: прошлые анимации отменяются, каждый вид начинает со своего кадра. */
+  /** Смена слайда: прошлые анимации отменяются, каждый вид начинает со своего кадра; гонку открыла ставка — она стартует сама. */
   $effect(() => {
     const id = slide;
     untrack(() => {
@@ -66,9 +64,10 @@
       cancel = () => {};
       started = false;
       p = id === "same" ? 1 : 0;
-      clock = id === "cartoonDone" || id === "chainDone" ? Infinity : 0;
+      clock = 0;
       if (id === "pixels") cancel = animate(1500, (f) => (p = f));
       if (id === "howGpu") cancel = animate(1200, (f) => (p = f));
+      if (id === "cartoonRace" || id === "chainRace") start();
     });
   });
 
@@ -89,7 +88,11 @@
 
   function start() {
     started = true;
-    cancel = race(Math.max(...Object.values(times)), (v) => (clock = v), done);
+    const key = view === "chain" ? "chain" : "cartoon";
+    cancel = race(Math.max(...Object.values(times)), (v) => (clock = v), () => {
+      set(key, 1);
+      done();
+    });
   }
 
   function runGroup() {
@@ -164,14 +167,11 @@
       {/each}
     </div>
     <div class="lanes"><Lanes {lanes} t={clock} /></div>
-    {#if slide === "cartoonRace" || slide === "chainRace"}
-      <div class="actions"><button class="primary" disabled={started} onclick={start}>{ru.ui.startRace}</button></div>
-    {/if}
   {:else if view === "board"}
     <div class="boards">
-      <Board ids={CREW} rows={["hands", "rate"]} caption={t.boardHands} />
-      <Board ids={CREW} rows={["time"]} task="split" n={CARTOON_ITEMS} ticks={scenario.pixel_ticks} caption={t.boardCartoon} />
-      <Board ids={CREW} rows={["time"]} task="chain" n={scenario.payments} ticks={scenario.payment_ticks} caption={t.boardChain} />
+      <Board dense ids={CREW} rows={["hands", "rate"]} caption={t.boardHands} />
+      <Board dense ids={CREW} rows={["time"]} task="split" n={CARTOON_ITEMS} ticks={scenario.pixel_ticks} caption={t.boardCartoon} />
+      <Board dense ids={CREW} rows={["time"]} task="chain" n={scenario.payments} ticks={scenario.payment_ticks} caption={t.boardChain} />
     </div>
   {:else}
     <ul class="machines" aria-label={t.machines}>

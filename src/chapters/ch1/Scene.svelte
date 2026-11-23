@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
   import type { SceneProps } from "../../deck/types";
   import { fill, fmtCount, fmtDuration, fmtExact } from "../../i18n/format";
   import { ru } from "../../i18n/ru";
@@ -8,16 +8,20 @@
   import Frame from "../../ui/Frame.svelte";
   import LogSlider from "../../ui/LogSlider.svelte";
   import { animate, reducedMotion } from "../../ui/motion";
-  import { ADD_TICKS, BITS, CYCLE, GATES, RATE, TPC, coreSeconds } from "./numbers";
+  import Adder from "./Adder.svelte";
+  import Multiplier from "./Multiplier.svelte";
+  import { ADD_TICKS, BITS, CYCLE, MUL_BITS, MUL_TICKS, MX, MY, RATE, TPC, coreSeconds } from "./numbers";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch1.scene;
 
-  type Phase = "gate" | "adder" | "clock" | "second" | "price";
+  type Phase = "gate" | "adder" | "mul" | "sandbox" | "clock" | "second" | "price";
   const PHASE: Record<string, Phase> = {
     lamp: "gate",
     xor: "gate",
     adder: "adder",
+    mul: "mul",
+    sandbox: "sandbox",
     clock: "clock",
     rateBet: "clock",
     second: "second",
@@ -33,37 +37,25 @@
   /* Переключатели и вентиль. */
   let a = $state(0);
   let b = $state(0);
-  let ops = $state(0);
   const isXor = $derived(slide === "xor");
-  let xorDone = $state(false);
   const lamp = $derived(isXor ? a ^ b : a & b);
   function toggle(which: "a" | "b") {
     if (which === "a") a ^= 1;
     else b ^= 1;
-    ops += 1;
     if (!(a & b)) return;
     if (slide === "lamp") set("lamp", 1);
     if (slide === "xor") {
-      xorDone = true;
       set("xor", 1);
     }
     done();
   }
 
-  /* Сумматор: два числа выбирает сцена, младший разряд справа. */
+  /* Сумматор: два числа выбирает сцена. */
   const X = 91;
   const Y = 55;
-  const bit = (v: number, j: number) => (v >> j) & 1;
-  /** carries[j] — перенос в разряд j. */
-  const carries = Array.from({ length: BITS + 1 }, () => 0);
-  for (let j = 0; j < BITS; j++) carries[j + 1] = (bit(X, j) + bit(Y, j) + carries[j]) >> 1;
-  const SUM = (X + Y) % 2 ** BITS;
-  const COLS = Array.from({ length: BITS }, (_, j) => j);
-  const colX = (j: number) => 602 - j * 58;
   let addAnim = $state(0);
   let started = $state(false);
   const addTicks = $derived(slide === "adder" ? addAnim : ADD_TICKS);
-  const lit = (j: number) => Math.max(0, Math.min(GATES, addTicks - j * GATES));
   function add() {
     if (started) return;
     started = true;
@@ -74,6 +66,73 @@
       () => {
         set("added", 1);
         done();
+      },
+    );
+  }
+
+  /* Умножение столбиком: MX × MY. */
+  let mulAnim = $state(0);
+  let mulStarted = $state(false);
+  const mulTicks = $derived(slide === "mul" ? mulAnim : MUL_TICKS);
+  function multiply() {
+    if (mulStarted) return;
+    mulStarted = true;
+    cancel();
+    cancel = animate(
+      MUL_TICKS * 50,
+      (f) => (mulAnim = Math.floor(MUL_TICKS * f)),
+      () => {
+        set("multiplied", 1);
+        done();
+      },
+    );
+  }
+
+  /* Песочница: действие и числа выбирает игрок; счётчик тиков от чисел не зависит. */
+  let op = $state<"add" | "mul">("add");
+  let sa = $state(X);
+  let sb = $state(Y);
+  let runTicks = $state(0);
+  let running = $state(false);
+  let runs = $state(0);
+  let total = $state(0);
+  function setOp(o: "add" | "mul") {
+    cancel();
+    running = false;
+    op = o;
+    sa = o === "add" ? X : MX;
+    sb = o === "add" ? Y : MY;
+    runTicks = 0;
+  }
+  /* Новые числа — ответ снова «?». */
+  $effect(() => {
+    sa;
+    sb;
+    untrack(() => {
+      if (slide !== "sandbox") return;
+      cancel();
+      running = false;
+      runTicks = 0;
+    });
+  });
+  function run() {
+    if (running) return;
+    const need = op === "add" ? ADD_TICKS : MUL_TICKS;
+    const ms = op === "add" ? 60 : 30;
+    running = true;
+    runTicks = 0;
+    cancel();
+    cancel = animate(
+      need * ms,
+      (f) => (runTicks = Math.floor(need * f)),
+      () => {
+        running = false;
+        runs += 1;
+        total += need;
+        if (runs === 2) {
+          set("played", 1);
+          done();
+        }
       },
     );
   }
@@ -95,7 +154,15 @@
     if (slide === "lamp" || slide === "xor") {
       a = 0;
       b = 0;
-      ops = 0;
+    }
+    if (slide === "mul") {
+      mulAnim = 0;
+      mulStarted = false;
+    }
+    if (slide === "sandbox") {
+      setOp("add");
+      runs = 0;
+      total = 0;
     }
     if (slide !== "second") return;
     cancel();
@@ -142,30 +209,15 @@
         <line class="wire" class:live={lamp === 1} x1="440" y1="190" x2="516" y2="190" />
         <circle class="lamp" class:on={lamp === 1} cx="556" cy="190" r="36" />
         <text class="bitv num" x="556" y="202" text-anchor="middle">{lamp}</text>
-        {#if xorDone}
-          <text class="counter num" x="630" y="60" text-anchor="end">{fill(t.counter, { n: fmtExact(Math.max(1, ops)) })}</text>
-        {/if}
       {:else if phase === "adder"}
-        <text class="dec num" x="20" y="112">{X}</text>
-        <text class="dec num" x="20" y="152">{Y}</text>
-        <text class="dec num" x="20" y="200">{addTicks >= ADD_TICKS ? SUM : "?"}</text>
-        <text class="plus" x="120" y="152">+</text>
-        <text class="clabel" x="20" y="72">{t.carry}</text>
-        <line class="bar" x1="140" y1="166" x2="632" y2="166" />
-        {#each COLS as j}
-          {@const n = lit(j)}
-          <g>
-            {#if j > 0 && lit(j - 1) === GATES}<text class="carry num" x={colX(j)} y="72" text-anchor="middle">{carries[j]}</text>{/if}
-            <text class="digit num" x={colX(j)} y="112" text-anchor="middle">{bit(X, j)}</text>
-            <text class="digit num" x={colX(j)} y="152" text-anchor="middle">{bit(Y, j)}</text>
-            {#if n === GATES}<text class="digit sum num" x={colX(j)} y="200" text-anchor="middle">{bit(SUM, j)}</text>{/if}
-            <rect class="adderbox" x={colX(j) - 26} y="218" width="52" height="40" rx="4" />
-            {#each Array.from({ length: GATES }, (_, k) => k) as k}
-              <rect class="g" class:on={k < n} x={colX(j) - 24 + k * 10} y="234" width="8" height="8" />
-            {/each}
-          </g>
-        {/each}
+        <Adder a={X} b={Y} ticks={addTicks} />
         <text class="counter num" x="320" y="330" text-anchor="middle">{fill(t.counter, { n: fmtExact(addTicks) })}</text>
+      {:else if phase === "mul"}
+        <Multiplier a={MX} b={MY} ticks={mulTicks} />
+        <text class="counter num" x="320" y="330" text-anchor="middle">{fill(t.counter, { n: fmtExact(mulTicks) })}</text>
+      {:else if phase === "sandbox"}
+        {#if op === "add"}<Adder a={sa} b={sb} ticks={runTicks} />{:else}<Multiplier a={sa} b={sb} ticks={runTicks} />{/if}
+        <text class="counter num" x="320" y="330" text-anchor="middle">{fill(t.counter, { n: fmtExact(runTicks) })}</text>
       {:else if phase === "clock"}
         <text class="caption" x="320" y="36" text-anchor="middle">{fill(t.hz, { hz: fmtCount(CYCLE.clock_hz) })}</text>
         <path class="base" d="M 80 330 L 180 330 L 160 300 L 100 300 Z" />
@@ -211,6 +263,25 @@
   {#if slide === "adder"}
     <div class="controls"><button class="primary" disabled={started} onclick={add}>{t.add}</button></div>
   {/if}
+  {#if slide === "mul"}
+    <div class="controls"><button class="primary" disabled={mulStarted} onclick={multiply}>{t.mul}</button></div>
+  {/if}
+  {#if slide === "sandbox"}
+    <div class="controls sandbox">
+      <div class="row">
+        <div class="ops" role="group" aria-label={t.op}>
+          <button aria-pressed={op === "add"} onclick={() => setOp("add")}>{t.opAdd}</button>
+          <button aria-pressed={op === "mul"} onclick={() => setOp("mul")}>{t.opMul}</button>
+        </div>
+        <button class="primary" disabled={running} onclick={run}>{t.run}</button>
+      </div>
+      <div class="nums">
+        <LogSlider label={fill(t.numA, { n: String(sa) })} min={0} max={op === "add" ? 2 ** BITS - 1 : 2 ** MUL_BITS - 1} step={1} bind:value={sa} />
+        <LogSlider label={fill(t.numB, { n: String(sb) })} min={0} max={op === "add" ? 2 ** BITS - 1 : 2 ** MUL_BITS - 1} step={1} bind:value={sb} />
+      </div>
+      <p class="num status" aria-live="polite">{fill(t.runs, { runs: fmtExact(runs), n: fmtExact(total) })}</p>
+    </div>
+  {/if}
   {#if slide === "price"}
     <div class="controls slider">
       <LogSlider label={fill(t.slider, { n: fmtCount(need) })} min={1} max={20} step={0.1} bind:value={exp} />
@@ -228,20 +299,11 @@
   .wire { fill: none; stroke: var(--line); stroke-width: 4; }
   .wire.live { stroke: var(--core); }
   .gname { font-size: 18px; font-weight: 600; }
-  .bar { stroke: var(--ink); stroke-width: 2; }
   .gatebox { fill: var(--paper); stroke: var(--ink); stroke-width: 3; }
   .lamp { fill: var(--paper); stroke: var(--ink); stroke-width: 3; transition: fill 200ms; }
   .lamp.on { fill: var(--core); }
   .counter { font-size: 26px; font-weight: 600; fill: var(--core); }
-  .dec { font-size: 26px; font-weight: 600; fill: var(--muted); }
-  .plus { font-size: 30px; font-weight: 600; }
   .clabel { font-size: 16px; fill: var(--muted); }
-  .digit { font-size: 30px; font-weight: 600; }
-  .digit.sum { fill: var(--core); animation: pop 200ms ease-out both; }
-  .carry { font-size: 18px; fill: var(--core); }
-  .adderbox { fill: var(--paper); stroke: var(--line); stroke-width: 2; }
-  .g { fill: var(--line); }
-  .g.on { fill: var(--core); }
   .caption { font-size: 20px; font-weight: 600; }
   .base { fill: var(--line); stroke: var(--ink); stroke-width: 2; }
   .pendulum { transform-origin: 130px 300px; transition: transform 900ms ease-in-out; }
@@ -256,7 +318,6 @@
   .fvalue { font-size: 28px; font-weight: 600; }
   .op { font-size: 30px; font-weight: 600; }
   .fewertag { font-size: 20px; font-weight: 600; fill: var(--core); }
-  @keyframes pop { from { opacity: 0; } }
   .sw {
     position: absolute;
     left: 6.25%;
@@ -275,4 +336,9 @@
   .sw.b { top: 69.4%; }
   .controls { display: flex; justify-content: center; margin-top: 0.5rem; }
   .controls.slider { display: block; }
+  .controls.sandbox { display: grid; gap: 0.5rem; justify-content: stretch; }
+  .row, .ops { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+  .nums { display: grid; gap: 0 1.5rem; }
+  @media (min-width: 700px) { .nums { grid-template-columns: 1fr 1fr; } }
+  .status { font-weight: 600; margin: 0.25rem 0 0; text-align: center; }
 </style>

@@ -248,6 +248,37 @@ export function adderTicks(bits: number): number {
   return bits * params.adder.gates_per_bit;
 }
 
+/** Тиков на сложение двух bits-битных чисел на кубитах: сумматор Куккаро — на разряд блок MAJ вверх и UMA обратно, плюс вентиль в старший разряд. */
+export function quantumAdderTicks(bits: number): number {
+  const q = params.quantum_adder;
+  return bits * (q.maj_gates + q.uma_gates) + q.carry_out_gates;
+}
+
+/** Умножение столбиком на реле: на каждый разряд множителя — строка из bits вентилей «И» и одно сложение. */
+export function multiplierTicks(bits: number): number {
+  return bits * (bits + adderTicks(bits));
+}
+
+/** То же на кубитах: строку «И» пишут и убирают вентилями Тоффоли (2·bits), между ними — квантовое сложение. */
+export function quantumMultiplierTicks(bits: number): number {
+  return bits * (2 * bits + quantumAdderTicks(bits));
+}
+
+export type QTask = "add" | "mul" | "search";
+
+/** Тиков квантовому на задачу, которой ядру нужно coreTicks тиков: сложения/умножения bits-битных чисел подряд или поиск с проверкой check тиков. */
+export function qcTicksFor(task: QTask, coreTicks: number, bits: number, check = DEFAULT_CHECK): number {
+  if (task === "add") return (coreTicks * quantumAdderTicks(bits)) / adderTicks(bits);
+  if (task === "mul") return (coreTicks * quantumMultiplierTicks(bits)) / multiplierTicks(bits);
+  return steps("qc", coreTicks / check) * check;
+}
+
+/** Точка безубыточности поиска против одного ядра — в вариантах, тиках обеих машин и секундах. */
+export function breakEven(check = DEFAULT_CHECK): { n: number; coreTicks: number; qcTicks: number; seconds: number } {
+  const c = crossover("core", check);
+  return { n: c.n, coreTicks: c.n * check, qcTicks: steps("qc", c.n) * check, seconds: c.seconds };
+}
+
 /** Тиков за один такт одного ядра: операций за такт × бит на операцию. */
 export function ticksPerCycle(id: "core" | "cores"): number {
   const d = executors[id].derivation;

@@ -6,23 +6,17 @@
   let { ids }: { ids: ExecutorId[] } = $props();
 </script>
 
-<details>
-  <summary>{ru.ui.basis}</summary>
-  <p>{ru.ui.basisFormula}</p>
-  <p>{ru.ui.basisUnit}</p>
-  <ul>
-    {#each ids as id}
-      {@const e = executors[id]}
-      <li>
-        <strong>{e.name_ru}</strong>:
-        <span class="num">{fill(ru.ui.rate, { rate: fmtCount(e.ops_per_s) })}</span>{#if !e.verified}
-          ({ru.ui.estimate}){/if}.
-        <a href={e.source_url} target="_blank" rel="noopener">{e.source}</a>
-      </li>
-    {/each}
-  </ul>
-</details>
-
-<style>
-  p, li { font-size: 0.875rem; line-height: 1.45; }
-</style>
+<!-- Содержимое справки «На чём основан расчёт»; кнопку-переключатель и панель рисует Deck. -->
+<p>{ru.ui.basisFormula}</p>
+<p>{ru.ui.basisUnit}</p>
+<ul>
+  {#each ids as id}
+    {@const e = executors[id]}
+    <li>
+      <strong>{e.name_ru}</strong>:
+      <span class="num">{fill(ru.ui.rate, { rate: fmtCount(e.ops_per_s) })}</span>{#if !e.verified}
+        ({ru.ui.estimate}){/if}.
+      <a href={e.source_url} target="_blank" rel="noopener">{e.source}</a>
+    </li>
+  {/each}
+</ul>

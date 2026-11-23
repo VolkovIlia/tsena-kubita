@@ -26,6 +26,8 @@
   let sceneDone = $state(false);
   let ctx = $state<Ctx>({ answers: { prologue: game.p.prologueAnswer ?? "skipped" }, scene: {} });
   let timer: ReturnType<typeof setTimeout> | undefined;
+  /** Раскрытая справка под кнопками: «На чём основан расчёт» или «Для любопытных». */
+  let open = $state<"basis" | "curious" | null>(null);
   onDestroy(() => clearTimeout(timer));
 
   const slide = $derived(deck.slides[index]);
@@ -42,6 +44,7 @@
     if (index === deck.slides.length - 1) return onDone();
     index += 1;
     sceneDone = false;
+    open = null;
   }
 
   function bet(optionId: string) {
@@ -57,9 +60,59 @@
   function focusIf(node: HTMLElement, on: boolean) {
     if (on) screenFocus(node);
   }
+
+  /** Раскрытая справка висит под колодой и может оказаться ниже края окна — прокрутить к ней. */
+  function reveal(node: HTMLElement) {
+    const scroll = new ResizeObserver(() => node.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" }));
+    scroll.observe(node.parentElement!);
+    const stop = setTimeout(() => scroll.disconnect(), 500);
+    return {
+      destroy() {
+        clearTimeout(stop);
+        scroll.disconnect();
+      },
+    };
+  }
+
+  /**
+   * Сцене тесно даже с картинкой на пороге (--pic-scale): её содержимое вылезает за её высоту.
+   * Тогда колода вырастает ровно на нехватку — прокручивается страница, внутри сцены ничего не прячется.
+   * Внутри слайда колода только растёт: сброс высоты на ходу (ползунок, часы гонки) отбросил бы прокрутку наверх.
+   * Сброс и новый замер — на новом слайде и при изменении размера окна.
+   */
+  function fit(deckEl: HTMLElement, _slideId: string) {
+    const stage = deckEl.querySelector<HTMLElement>(".stage")!;
+    let raf = 0;
+    const grow = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const deficit = stage.scrollHeight - stage.clientHeight;
+        if (deficit > 0) deckEl.style.minHeight = `${deckEl.clientHeight + deficit}px`;
+      });
+    };
+    const reset = () => {
+      deckEl.style.minHeight = "";
+      grow();
+    };
+    const resize = new ResizeObserver(grow);
+    resize.observe(stage);
+    const mutate = new MutationObserver(grow);
+    mutate.observe(stage, { childList: true, subtree: true, characterData: true });
+    addEventListener("resize", reset);
+    grow();
+    return {
+      update: reset,
+      destroy() {
+        cancelAnimationFrame(raf);
+        resize.disconnect();
+        mutate.disconnect();
+        removeEventListener("resize", reset);
+      },
+    };
+  }
 </script>
 
-<div class="deck">
+<div class="deck" use:fit={slide.id}>
   <div class="progress" aria-hidden="true"><div style:width="{((index + 1) / deck.slides.length) * 100}%"></div></div>
   {#key slide.id}
     {#if slide.top}<p class="top" tabindex="-1" aria-live="polite" use:screenFocus>{slide.top(ctx)}</p>{/if}
@@ -72,34 +125,50 @@
       {#if slide.quote}
         <div class="say"><Quote who={slide.quote.who} text={slide.quote.text(ctx)} cite={slide.quote.cite} /></div>
       {/if}
-      {#if slide.act.kind !== "bet" && slide.bottom}<p class="bottom" aria-live="polite">{slide.bottom(ctx)}</p>{/if}
+      {#if slide.act.kind !== "bet" && slide.bottom?.(ctx)}<p class="bottom" aria-live="polite">{slide.bottom(ctx)}</p>{/if}
       {#if slide.rule}<div class="bottom"><RuleCard rule={slide.rule} /></div>{/if}
-      {#if slide.basis}<div class="bottom"><Basis ids={slide.basis} /></div>{/if}
-      {#if slide.curious || slide.cites}
-        <div class="bottom">
-          <Curious cites={slide.cites ?? []}>
-            {#each slide.curious ?? [] as c}<p>{c(ctx)}</p>{/each}
-          </Curious>
+    </div>
+    <div class="act">
+      {#if slide.act.kind === "bet"}
+        <Bet
+          question={slide.bottom?.(ctx) ?? ""}
+          options={slide.act.options.map((o) => ({ id: o.id, label: o.label(ctx) }))}
+          onAnswer={bet}
+        />
+        {#if slide.basis || slide.curious || slide.cites}<div class="actions extras">{@render toggles()}</div>{/if}
+      {:else}
+        <div class="actions">
+          <button class="primary" disabled={!canAdvance(slide, sceneDone)} onclick={go}>
+            {slide.act.label?.(ctx) ?? ru.ui.next}
+          </button>
+          {@render toggles()}
         </div>
       {/if}
-      <div class="act">
-        {#if slide.act.kind === "bet"}
-          <Bet
-            question={slide.bottom?.(ctx) ?? ""}
-            options={slide.act.options.map((o) => ({ id: o.id, label: o.label(ctx) }))}
-            onAnswer={bet}
-          />
-        {:else}
-          <div class="actions">
-            <button class="primary" disabled={!canAdvance(slide, sceneDone)} onclick={go}>
-              {slide.act.label?.(ctx) ?? ru.ui.next}
-            </button>
-          </div>
-        {/if}
-      </div>
     </div>
+    {#if open === "basis" && slide.basis}
+      <div id="more-basis" class="more" use:reveal><Basis ids={slide.basis} /></div>
+    {:else if open === "curious"}
+      <div id="more-curious" class="more" use:reveal>
+        <Curious cites={slide.cites ?? []}>
+          {#each slide.curious ?? [] as c}<p>{c(ctx)}</p>{/each}
+        </Curious>
+      </div>
+    {/if}
   {/key}
 </div>
+
+{#snippet toggles()}
+  {#if slide.basis}
+    <button class="toggle" aria-expanded={open === "basis"} aria-controls="more-basis" onclick={() => (open = open === "basis" ? null : "basis")}>
+      {ru.ui.basis}
+    </button>
+  {/if}
+  {#if slide.curious || slide.cites}
+    <button class="toggle" aria-expanded={open === "curious"} aria-controls="more-curious" onclick={() => (open = open === "curious" ? null : "curious")}>
+      {ru.ui.curious}
+    </button>
+  {/if}
+{/snippet}
 
 <style>
   .progress { height: 4px; background: var(--line); border-radius: 2px; margin-bottom: 0.75rem; }
@@ -109,21 +178,38 @@
   .stage { width: 100%; margin: 0 0 0.5rem; }
   /*
    * Столбик на высоту окна (app.css): сжимается только картинка сцены, слова и кнопки — нет.
-   * Если сцена с её кнопками всё равно не влезла, прокручивается только она, а кнопка «Дальше» на экране.
+   * Картинка не мельче --pic-scale своего рисунка: Frame знает размер рисунка из своих w и h, у голого SVG сцены
+   * высоту рисунка задаёт --vb-h (по умолчанию 360). Не влезло и так — fit() растягивает колоду,
+   * прокручивается страница, а полоса действия («Дальше» или ставка) прилипает к нижнему краю окна.
+   * Раскрытая справка висит под колодой и не отнимает место у картинки.
    */
   @media (min-width: 600px) and (min-height: 560px) {
-    .deck { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-    .progress, .top, .below { flex: none; }
+    .deck { --pic-scale: 0.6; position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .progress, .top, .below, .act { flex: none; }
+    .more { position: absolute; top: 100%; left: 0; right: 0; padding-bottom: 1rem; }
     .stage { flex: 0 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
     .stage > :global(.scene) { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
-    .stage > :global(.scene) > :global(svg) { flex: 0 1 auto; min-height: 6rem; width: 100%; height: auto; }
+    .stage > :global(.scene) > :global(svg) { flex: 0 1 auto; min-height: calc(var(--pic-scale) * var(--vb-h, 360) * 1px); width: 100%; height: auto; }
+    .act { position: sticky; bottom: 0; z-index: 1; background: var(--paper); container-type: scroll-state; }
+    /* Прилипла — значит, под ней ещё есть слова: тонкая черта сверху (браузеры без scroll-state её просто не рисуют). */
+    @container scroll-state(stuck: bottom) {
+      .act > :global(:first-child) { box-shadow: 0 -1px 0 var(--line); }
+    }
   }
   .say { animation: appear 300ms 300ms both; }
   .bottom { animation: appear 300ms 600ms both; }
   p.bottom { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
   .act { animation: appear 300ms 900ms both; }
-  .act :global(.actions) { margin: 0.5rem 0; }
+  .act :global(.actions) { margin: 0.5rem 0; align-items: center; }
   .act :global(.question) { margin-top: 0.5rem; }
+  .act .extras { margin-top: 0; }
+  .toggle { border-color: var(--line); background: transparent; }
+  .toggle::before { content: "▸ "; }
+  .toggle[aria-expanded="true"] { border-color: var(--ink); }
+  .toggle[aria-expanded="true"]::before { content: "▾ "; }
+  .more { border-top: 1px solid var(--line); padding-top: 0.5rem; margin-bottom: 1rem; }
+  .more :global(p), .more :global(li) { font-size: 0.875rem; line-height: 1.45; }
+  .more :global(ul) { padding-left: 1.25rem; }
   @keyframes appear {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }

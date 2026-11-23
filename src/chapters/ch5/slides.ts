@@ -1,12 +1,31 @@
 import params from "../../../data/params.json";
 import type { Slide } from "../../deck/types";
 import { eventYear } from "../../game/chapters";
-import { fill, fmtCount, fmtPercent } from "../../i18n/format";
+import { fill, fmtCount, fmtExact, fmtPercent } from "../../i18n/format";
 import { ru } from "../../i18n/ru";
+import { decode } from "../../model/circuit";
 import { basis, probabilities, rotate } from "../../model/statevector";
 import { memoryScales, physicalPerLogical, scenario, stateVectorSize } from "../../model/tick";
+import {
+  ALL_PAIRS,
+  ALL_TICKS,
+  BITS,
+  MUL,
+  PAIRS,
+  Q_ADD,
+  Q_MUL,
+  RELAY_ADD,
+  RELAY_MUL,
+  RUNS,
+  TURN,
+  TURN_DEG,
+  X,
+  Y,
+} from "./numbers";
 
 const t = ru.ch5;
+const tick = ru.chapters.ch1;
+const XY = { x: String(X), y: String(Y) };
 
 /** Дверей в лотерее — как в пинболе «Квантового алгоритма»; кубитов — log₂ дверей. */
 export const DOORS = scenario.pinball_doors;
@@ -18,9 +37,7 @@ export const MEASURES = 10;
 export const LOOKS = 3;
 /** Цель настройки стрелки: фильтр «1» пропускает фотон в трёх случаях из четырёх (выбор сцены, ±5 п. п.). Цель вентиля — через раз. */
 export const TARGET = { p: 0.75, tolerance: 0.05, half: 0.5 };
-/** Вентиль главы — поворот на четверть прямого угла; из «0» он даёт равную смесь. */
-export const TURN = Math.PI / 4;
-export const TURN_DEG = String((TURN * 180) / Math.PI);
+/** Равная смесь: «0» после вентиля главы. */
 export const MIXED = rotate(basis(1), 0, TURN);
 /** Подписи двух исходов кубита: значения бита, а не числа модели. */
 export const BIT = { zero: "«0»", one: "«1»" };
@@ -129,6 +146,84 @@ export const slides: Slide[] = [
     top: (c) => (c.scene.grown ? fill(t.twoN.done.top, { big: String(BIG), amps: fmtCount(stateVectorSize(BIG)) }) : t.twoN.top),
     bottom: (c) => (c.scene.grown ? fill(t.twoN.done.bottom, { field: ru.chapters.ch9 }) : t.twoN.bottom),
     cites: ["qcvc", "apple"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "wires",
+    top: (c) => (c.scene.wired ? fill(t.wires.done.top, BIT) : fill(t.wires.top, { deg: TURN_DEG })),
+    bottom: (c) => (c.scene.wired ? fill(t.wires.done.bottom, { ...BIT, tick }) : t.wires.bottom),
+    act: { kind: "scene" },
+    cites: ["cuccaro"],
+  },
+  {
+    id: "qadd",
+    top: (c) =>
+      fill(c.scene.qadded ? t.qadd.done.top : t.qadd.top, {
+        ...XY,
+        ...BIT,
+        tick,
+        sum: String(X + Y),
+        q: fmtExact(Q_ADD),
+        r: fmtExact(RELAY_ADD),
+        bits: String(BITS),
+      }),
+    bottom: (c) => (c.scene.qadded ? fill(t.qadd.done.bottom, BIT) : t.qadd.bottom),
+    curious: [
+      () => t.qadd.curious1,
+      () =>
+        fill(t.qadd.curious2, {
+          maj: String(params.quantum_adder.maj_gates),
+          uma: String(params.quantum_adder.uma_gates),
+          z: String(params.quantum_adder.carry_out_gates),
+        }),
+    ],
+    cites: ["cuccaro"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "qmul",
+    top: (c) =>
+      fill(c.scene.allDone ? t.qmul.all.top : c.scene.multiplied ? t.qmul.done.top : t.qmul.top, {
+        ...XY,
+        tick,
+        p: String(X * Y),
+        q: fmtExact(Q_MUL),
+        r: fmtExact(RELAY_MUL),
+        list: Array.from({ length: RUNS }, (_, k) => {
+          const d = decode(ALL_PAIRS, c.scene[`pair${k}`] ?? 0);
+          return fill(t.scene.product, { x: String(d.a), y: String(d.b), p: String(d.p) });
+        }).join(", "),
+        pairs: String(PAIRS),
+        k: fmtExact(ALL_TICKS),
+      }),
+    bottom: (c) =>
+      c.scene.allDone
+        ? fill(t.qmul.all.bottom, { w: String(MUL.wires.length), amps: fmtCount(stateVectorSize(MUL.wires.length)) })
+        : c.scene.runs
+          ? t.qmul.again
+          : c.scene.multiplied
+            ? fill(t.qmul.done.bottom, { deg: TURN_DEG })
+            : t.qmul.bottom,
+    curious: [
+      () => fill(t.qmul.curious1, { s: String(2 * BITS) }),
+      () => fill(t.qmul.curious2, { turns: String(2 * BITS), deg: TURN_DEG }),
+    ],
+    cites: ["hoefler", "cuccaro"],
+    act: { kind: "scene" },
+  },
+  {
+    id: "qsandbox",
+    top: (c) => (c.scene.qplayed ? t.qsandbox.done.top : fill(t.qsandbox.top, { deg: TURN_DEG })),
+    bottom: (c) =>
+      c.scene.qplayed
+        ? fill(t.qsandbox.done.bottom, {
+            ra: fmtExact(RELAY_ADD),
+            rm: fmtExact(RELAY_MUL),
+            qa: fmtExact(Q_ADD),
+            qm: fmtExact(Q_MUL),
+          })
+        : t.qsandbox.bottom,
+    cites: ["cuccaro"],
     act: { kind: "scene" },
   },
   {

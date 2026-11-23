@@ -31,6 +31,7 @@ import {
   laneRate,
   loadSeconds,
   memoryPlace,
+  multiplierTicks,
   memoryScales,
   opsPerCycle,
   qcFavour,
@@ -299,6 +300,10 @@ describe("хроника: тик, лестница, ядра", () => {
     expect(ladderSeconds("linear", 100)).toBeCloseTo(7.8e-9, 10);
     expect(complexitySteps("log", 100)).toBe(7);
   });
+  it("умножение на реле: 4 × 4 бита — 96 тиков", () => {
+    expect(multiplierTicks(4)).toBe(96);
+    expect(tickNumbers.MUL_TICKS).toBe(96);
+  });
   it("мультфильм на 64 ядрах — почти в 58 раз быстрее, а не в 64", () => {
     const x = solveSeconds("core", pixels, scenario.pixel_ticks) / solveSeconds("cores", pixels, scenario.pixel_ticks);
     expect(x).toBeCloseTo(57.6, 6);
@@ -511,6 +516,7 @@ describe("гл. «Квантовый алгоритм», «Гонка», «Уз�
   it("Гонка: такт 10 мкс против 0,71 нс; за такт 3,5 миллиона против 2; 338–1 458 шумных; дороже больше чем в 10 миллиардов раз", () => {
     expect(fmtDuration(model.cycleSeconds("qc"))).toBe("10 мкс");
     expect(fmtDuration(model.cycleSeconds("gpu"))).toBe("0,71 нс");
+    expect(sp(fmtTimes(model.cycleSeconds("qc") / model.cycleSeconds("gpu")))).toBe("14 104 раза");
     expect(format.fmtCount(opsPerCycle("gpu"))).toBe("3,5 миллиона");
     expect(format.fmtCount(Math.round(opsPerCycle("qc")))).toBe("2");
     const [dMin, dMax] = params.surface_code.distances;
@@ -647,5 +653,40 @@ describe("пролог «Новости»: «сейчас» и цена шага
   it("сейчас 2026-й; шаг квантового дороже шага видеокарты больше чем в 10 миллиардов раз", () => {
     expect(AS_OF_YEAR).toBe(2026);
     expect(fmtCount(powerOfTenBelow(rateRatio("gpu", "qc")))).toBe("10 миллиардов");
+  });
+});
+
+describe("гл. «Гонка»: квантовый тик — строки на экране", () => {
+  const sp = (s: string) => s.replace(/\u00a0/g, " ");
+  const coreAdd = model.workSeconds("core", 1, adderTicks(2));
+  const qcAdd = model.workSeconds("qc", 1, model.quantumAdderTicks(2));
+  it("2 + 2: реле 10 тиков, кубиты 13 (на 8 разрядах — 49); 2 × 2: 24 против 34", () => {
+    expect([adderTicks(2), model.quantumAdderTicks(2), model.quantumAdderTicks(8)]).toEqual([10, 13, 49]);
+    expect([model.multiplierTicks(2), model.quantumMultiplierTicks(2)]).toEqual([24, 34]);
+  });
+  it("цена 2 + 2: 0,0078 нс против 55 мкс — в 7,1 миллиона раз дольше, больше чем в 1 миллион; тик дороже в 5,4 миллиона раз", () => {
+    expect([fmtDuration(coreAdd), fmtDuration(qcAdd)]).toEqual(["0,0078 нс", "55 мкс"]);
+    expect(fmtCount(qcAdd / coreAdd)).toBe("7,1 миллиона");
+    expect(fmtCount(powerOfTenBelow(qcAdd / coreAdd))).toBe("1 миллион");
+    expect(fmtCount(rateRatio("core", "qc"))).toBe("5,4 миллиона");
+  });
+  it("только Тоффоли: 4 — всё равно в 2,2 миллиона раз дольше; 11 кубитов — 2 048 амплитуд", () => {
+    expect(fmtCount(model.workSeconds("qc", 1, 4) / coreAdd)).toBe("2,2 миллиона");
+    expect(sp(fmtCount(stateVectorSize(11)))).toBe("2 048");
+  });
+  it("безубыточность поиска: 30 триллионов вариантов, 3 квадриллиона тиков ядра против 545 миллионов, 39 мин", () => {
+    const b = model.breakEven();
+    expect([fmtCount(b.n), fmtCount(b.coreTicks), fmtCount(b.qcTicks), fmtDuration(b.seconds)]).toEqual([
+      "30 триллионов",
+      "3 квадриллиона",
+      "545 миллионов",
+      "39 мин",
+    ]);
+    expect(b.coreTicks / b.qcTicks).toBeCloseTo(rateRatio("core", "qc"), 6);
+  });
+  it("сложение и умножение у квантового всегда дольше, чем у ядра: линии не пересекаются", () => {
+    for (const c of [10, 1e10, 1e20])
+      for (const task of ["add", "mul"] as const)
+        expect(model.workSeconds("qc", 1, model.qcTicksFor(task, c, 2))).toBeGreaterThan(solveSeconds("core", c, 1));
   });
 });

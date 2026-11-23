@@ -13,7 +13,8 @@ export function animate(ms: number, onFrame: (f: number) => void, onDone?: () =>
   let id = 0;
   const start = performance.now();
   const step = (now: number) => {
-    const f = Math.min(1, (now - start) / ms);
+    /* Метка кадра rAF бывает раньше start: без нижней границы первый кадр даёт отрицательную долю. */
+    const f = Math.max(0, Math.min(1, (now - start) / ms));
     onFrame(f);
     if (f < 1) id = requestAnimationFrame(step);
     else onDone?.();

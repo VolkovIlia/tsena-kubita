@@ -98,6 +98,7 @@ export const cite = {
     url: "https://docs.nvidia.com/cuda/archive/12.4.0/cuda-c-programming-guide/index.html#simt-architecture",
   },
   kuphaldt: { text: "Kuphaldt. Lessons In Electric Circuits, Vol. IV, ch. 9: Full-Adder", url: "https://www.ibiblio.org/kuphaldt/electricCircuits/Digital/DIGI_9.html" },
+  cuccaro: { text: "Cuccaro, Draper, Kutin, Moulton. A new quantum ripple-carry addition circuit. arXiv:quant-ph/0410184, 2004", url: "https://arxiv.org/abs/quant-ph/0410184" },
   planck: { text: "Planck Collaboration. Planck 2018 results. VI. Cosmological parameters", url: "https://arxiv.org/abs/1807.06209" },
   dijkstraInterview: {
     text: "An Interview with Edsger W. Dijkstra. CACM 53(8), 2010",

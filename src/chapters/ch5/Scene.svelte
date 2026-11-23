@@ -9,14 +9,19 @@
   import { animate, reducedMotion } from "../../ui/motion";
   import { exName } from "../../ui/names";
   import Arrow from "./Arrow.svelte";
+  import Arith from "./Arith.svelte";
   import Bars from "./Bars.svelte";
-  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, TURN, WILLOW } from "./slides";
+  import Bridge from "./Bridge.svelte";
+  import { TURN } from "./numbers";
+  import { BIT, LATTICE, LOOKS, MAX_QUBITS, MEASURES, MIXED, QUBITS, TARGET, WILLOW } from "./slides";
 
   let { slide, set, done }: SceneProps = $props();
   const t = ru.ch5.scene;
   const BITS = [BIT.zero, BIT.one];
   const binary = (i: number, q: number) => i.toString(2).padStart(q, "0");
 
+  /** Арифметика на кубитах: свой компонент со схемой, новое состояние на каждый слайд. */
+  const ARITH = ["qadd", "qmul", "qsandbox"];
   /** Панель сцены по слайду: каждая — одна картинка в рамке 16:9. */
   const PANELS: Record<string, string> = {
     arrow: "arrow",
@@ -219,6 +224,11 @@
 </script>
 
 <div class="scene">
+  {#if ARITH.includes(slide)}
+    {#key slide}<Arith {slide} {set} {done} />{/key}
+  {:else if slide === "wires"}
+    <Bridge {set} {done} />
+  {:else}
   <Frame>
     <svg viewBox="0 0 640 360" role="img" aria-label={label}>
       {#if panel === "arrow"}
@@ -315,6 +325,7 @@
     <p class="num status" aria-live="polite">
       {fill(t.looked, { n: String(looks.length), max: String(LOOKS) })} · {fill(t.door, { i: String(opened + 1) })}
     </p>
+  {/if}
   {/if}
 </div>
 

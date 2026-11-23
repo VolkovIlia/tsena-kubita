@@ -41,6 +41,32 @@ export function rotate(a: Amps, q: number, theta: number): Amps {
   return out;
 }
 
+/** CNOT: если кубит c — единица, кубит t переворачивается; пары (i, i|2^t) с битом c меняются местами. */
+export function cnot(a: Amps, c: number, t: number): Amps {
+  const out = a.slice();
+  const cb = 1 << c;
+  const tb = 1 << t;
+  for (let i = 0; i < a.length; i++) {
+    if (!(i & cb) || i & tb) continue;
+    out[i] = a[i | tb];
+    out[i | tb] = a[i];
+  }
+  return out;
+}
+
+/** Тоффоли: если кубиты c1 и c2 — единицы, кубит t переворачивается. */
+export function toffoli(a: Amps, c1: number, c2: number, t: number): Amps {
+  const out = a.slice();
+  const cb = (1 << c1) | (1 << c2);
+  const tb = 1 << t;
+  for (let i = 0; i < a.length; i++) {
+    if ((i & cb) !== cb || i & tb) continue;
+    out[i] = a[i | tb];
+    out[i | tb] = a[i];
+  }
+  return out;
+}
+
 /**
  * Шанс, что фотон-кубит пройдёт фильтр, ось которого повёрнута на angle от «0» к «1»:
  * квадрат тени стрелки на ось фильтра (закон Малюса для одного фотона). Фильтр «1» — angle = π/2.

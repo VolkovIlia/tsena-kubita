@@ -2,6 +2,7 @@
   /**
    * Табло сравнения: исполнители × показатели. Лучшее значение строки — в рамке,
    * мини-полоса — в логарифмическом масштабе. На узком экране исполнители идут строками.
+   * Крупное по умолчанию: табло — главная картинка слайда. dense — для нескольких табло на одном слайде.
    */
   import { fmtCount, fmtDuration } from "../i18n/format";
   import { ru } from "../i18n/ru";
@@ -18,7 +19,9 @@
     ticks = DEFAULT_CHECK,
     task = "search",
     caption,
-  }: { ids: ExecutorId[]; rows: Row[]; n?: number; ticks?: number; task?: Task; caption?: string } = $props();
+    dense = false,
+  }: { ids: ExecutorId[]; rows: Row[]; n?: number; ticks?: number; task?: Task; caption?: string; dense?: boolean } = $props();
+  const icon = $derived(dense ? 20 : 28);
 
   function value(row: Row, id: ExecutorId): number {
     if (row === "hands") return hands(id);
@@ -48,14 +51,15 @@
   });
 </script>
 
-<figure class="board">
+<figure class="board" class:dense>
   {#if caption}<figcaption>{caption}</figcaption>{/if}
   <table class="wide">
+    <colgroup><col class="head" />{#each ids as id (id)}<col />{/each}</colgroup>
     <thead>
       <tr>
         <td></td>
         {#each ids as id (id)}
-          <th scope="col" class="ex-{id}"><ExecutorIcon ex={id} size={20} /><span>{exName(id)}</span></th>
+          <th scope="col" class="ex-{id}"><ExecutorIcon ex={id} size={icon} /><span>{exName(id)}</span></th>
         {/each}
       </tr>
     </thead>
@@ -98,19 +102,32 @@
 </figure>
 
 <style>
-  .board { margin: 0.25rem 0 0.5rem; max-width: 100%; }
-  figcaption { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.125rem; }
-  table { border-collapse: separate; border-spacing: 0.25rem 0.125rem; width: 100%; table-layout: fixed; }
-  th { font-weight: 600; text-align: left; font-size: 0.875rem; vertical-align: middle; }
+  .board { margin: 0.5rem 0 0.75rem; max-width: 100%; }
+  figcaption { font-weight: 600; font-size: 1.125rem; margin-bottom: 0.5rem; }
+  table { border-collapse: separate; border-spacing: 0.375rem 0.375rem; width: 100%; table-layout: fixed; }
+  /* Подписи строк уже, чем столбцы машин: число со словом шкалы («5 квадриллионов») помещается в одну строку. */
+  col.head { width: 8.5rem; }
+  th { font-weight: 600; text-align: left; font-size: 1.125rem; vertical-align: middle; }
   thead th { color: var(--ex); }
   th :global(svg), th span { display: inline-block; vertical-align: middle; }
-  th span { margin-left: 0.25rem; }
-  td { padding: 0.125rem 0.375rem; border: 2px solid transparent; border-radius: 4px; vertical-align: top; font-size: 0.9375rem; line-height: 1.3; }
+  th span { margin-left: 0.375rem; }
+  td { padding: 0.375rem 0.5rem; border: 2px solid transparent; border-radius: 6px; vertical-align: top; font-size: 1.125rem; line-height: 1.3; }
+  .wide td .num { white-space: nowrap; }
   td.best { border-color: var(--ex, var(--ink)); font-weight: 600; }
-  .bar { display: block; height: 4px; margin-top: 0.125rem; background: var(--ex, var(--ink)); border-radius: 2px; }
-  .narrow { display: none; }
+  .bar { display: block; height: 6px; margin-top: 0.25rem; background: var(--ex, var(--ink)); border-radius: 3px; }
+  .narrow { display: none; border-spacing: 0.25rem 0.125rem; }
   .narrow th[scope="row"] { color: var(--ex); vertical-align: top; }
-  .narrow td { font-size: 0.8125rem; overflow-wrap: anywhere; }
+  .narrow th { font-size: 0.875rem; }
+  .narrow td { padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.8125rem; overflow-wrap: anywhere; }
+  .narrow .bar { height: 4px; margin-top: 0.125rem; border-radius: 2px; }
+  .dense { margin: 0.25rem 0 0.5rem; }
+  .dense figcaption { font-size: 0.9375rem; margin-bottom: 0.125rem; }
+  .dense table { border-spacing: 0.25rem 0.125rem; }
+  .dense th { font-size: 0.875rem; }
+  .dense th span { margin-left: 0.25rem; }
+  .dense td { padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.9375rem; }
+  .dense .bar { height: 4px; margin-top: 0.125rem; border-radius: 2px; }
+  .dense .narrow td { font-size: 0.8125rem; }
   @media (max-width: 599px) {
     .wide { display: none; }
     .narrow { display: table; }

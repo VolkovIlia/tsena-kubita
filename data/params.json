@@ -125,6 +125,14 @@
     "source_url": "https://www.ibiblio.org/kuphaldt/electricCircuits/Digital/DIGI_9.html",
     "verified": true
   },
+  "quantum_adder": {
+    "maj_gates": 3,
+    "uma_gates": 3,
+    "carry_out_gates": 1,
+    "source": "Cuccaro, Draper, Kutin, Moulton 2004, §2 и рис. 1–4: MAJ — два CNOT и Тоффоли, UMA (вариант с двумя CNOT) — Тоффоли и два CNOT; сумматор — n блоков MAJ, CNOT в старший разряд Z, n блоков UMA обратным ходом (§2: «In a reversible ripple-carry adder, we must then erase the carry bits, working our way back down»)",
+    "source_url": "https://arxiv.org/abs/quant-ph/0410184",
+    "verified": true
+  },
   "universe_age_years": {
     "value": 1.3787e10,
     "source": "Planck 2018 results. VI. Cosmological parameters, Table 2, TT,TE,EE+lowE+lensing+BAO: 13,787 ± 0,020 млрд лет",

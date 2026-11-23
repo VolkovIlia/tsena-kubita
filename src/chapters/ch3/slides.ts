@@ -56,7 +56,7 @@ export const slides: Slide[] = [
       c.scene.cartoon
         ? fill(t.cartoonRace.done.top, { one, many, tOne: fmtDuration(cartoon.core), tMany: fmtDuration(cartoon.cores), x, n: xn })
         : fill(t.cartoonRace.reply[c.answers.speedup as keyof typeof t.cartoonRace.reply] ?? t.cartoonRace.reply.almost, { n: xn }),
-    bottom: (c) => (c.scene.cartoon ? fill(t.cartoonRace.done.bottom, { n: xn, x, ...ghz }) : t.cartoonRace.bottom),
+    bottom: (c) => (c.scene.cartoon ? fill(t.cartoonRace.done.bottom, { n: xn, x, ...ghz }) : ""),
     curious: [() => fill(t.cartoonRace.curious, { tick: ru.chapters.ch1, n, x, ...ghz })],
     cites: ["amd"],
     act: { kind: "scene" },
@@ -82,7 +82,7 @@ export const slides: Slide[] = [
       c.scene.chain
         ? fill(t.chainRace.done.top, { one, many, tOne: fmtDuration(chain.core), tMany: fmtDuration(chain.cores), n })
         : (t.chainRace.reply[c.answers.chain as keyof typeof t.chainRace.reply] ?? t.chainRace.reply.slower),
-    bottom: (c) => (c.scene.chain ? fill(t.chainRace.done.bottom, ghz) : t.chainRace.bottom),
+    bottom: (c) => (c.scene.chain ? fill(t.chainRace.done.bottom, ghz) : ""),
     curious: [() => fill(t.chainRace.curious, { many })],
     cites: ["amd"],
     act: { kind: "scene" },
